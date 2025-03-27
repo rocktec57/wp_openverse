@@ -1,0 +1,69 @@
+services:
+  cache:
+    profiles:
+      - api
+    image: docker.io/redis:7.2.5
+    ports:
+      - "50263:6379"
+
+  web:
+    profiles:
+      - api
+    build:
+      target: api
+      additional_contexts:
+        - packages=../packages/python
+      args: # Automatically inferred from env vars, unless specified
+        - SEMANTIC_VERSION=${SEMANTIC_VERSION:-v1.0.0}
+        - API_PY_VERSION
+        - OV_PDM_VERSION=${OV_PDM_VERSION}
+        - PDM_INSTALL_ARGS=--dev
+    image: openverse-api:${API_PDM_HASH:-latest}
+    pull_policy: never
+    # During debugging, use the following command to override.
+    # command: python -Xfrozen_modules=off -m debugpy --listen 0.0.0.0:5678 run.py
+    volumes:
+      - .:/api:z
+      - ../packages/python:/packages/python:z
+    ports:
+      # - "50256:5678" # Uncomment this to map port for debugging.
+      - "50280:50280"
+    depends_on:
+      - db
+      - es
+      - cache
+    env_file:
+      - env.docker
+      - .env
+    stdin_open: true
+    tty: true
+
+  nginx:
+    profiles:
+      - api_extra
+    build:
+      target: nginx
+      additional_contexts:
+        - packages=../packages/python
+      args: # Automatically inferred from env vars, unless specified
+        - SEMANTIC_VERSION=${SEMANTIC_VERSION:-v1.0.0}
+        - API_PY_VERSION
+        - PDM_INSTALL_ARGS=--dev
+    image: openverse-api_nginx:${API_PDM_HASH:-latest}
+    pull_policy: never
+    ports:
+      - "50270:8080"
+    environment:
+      DJANGO_NGINX_UPSTREAM_URL: web:50280
+    depends_on:
+      - web
+
+  # Used in API unit tests
+  httpbin:
+    profiles:
+      - api
+    # Use go-httpbin because it's only 15 MB compared to upstream HTTPBin's 204 MB
+    # That helps reduce the network burden of spinning up a development environment
+    image: docker.io/mccutchen/go-httpbin:v2.14.1
+    expose:
+      - "8080"

@@ -1,9 +1,4 @@
-# This file is being synced from WordPress/openverse. Any changes made to it
-# here will be overwritten. Please make any necessary edits to these files:
-# - https://github.com/WordPress/openverse/blob/main/templates/.pre-commit-config.yaml.jinja
-# - https://github.com/WordPress/openverse/blob/main/templates/.pre-commit-config.local.yaml.jinja
-
-exclude: Pipfile\.lock|migrations|\.idea|node_modules|archive|retired
+exclude: Pipfile\.lock|migrations|\.idea|node_modules|\.snap
 
 repos:
   - repo: local # More local hooks are defined at the bottom.
@@ -17,21 +12,31 @@ repos:
         language: system
         pass_filenames: false
 
+      # Replace ```console code block with ```bash in our documentation
+      - id: fix-console-code-block
+        name: Ensure "bash" code block is used over "console"
+        files: ^documentation/.*\.md$
+        # -i: edit in place (no argument means no backup)
+        # -p: loop over all files provided, print error message if file cannot be opened
+        # -e: use the code provided inline
+        entry: python3 -c 'import fileinput; [print(line.replace("```console", "```bash"), end="") for line in fileinput.input(inplace=True)]'
+        language: system
+
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.0.1
+    rev: v5.0.0
     hooks:
       - id: trailing-whitespace
         args: [--markdown-linebreak-ext=md]
       - id: check-executables-have-shebangs
       - id: check-json
-        exclude: tsconfig.json # contains comments
+        exclude: tsconfig.(base\.)?json|.devcontainer/devcontainer.json # contains comments
       - id: check-case-conflict
       - id: check-toml
       - id: check-merge-conflict
       - id: check-xml
       - id: check-yaml
       - id: end-of-file-fixer
-        exclude: frontend/test/tapes/.+\.json5
+        exclude: (frontend/test/tapes/.+\.json5|frontend/.*snapshots.*)
       - id: check-symlinks
       - id: mixed-line-ending
       - id: fix-encoding-pragma
@@ -40,131 +45,124 @@ repos:
       - id: check-docstring-first
       - id: requirements-txt-fixer
 
-  # Use the `.isort.cfg` file to configure additional project-specific requirements.
-  - repo: https://github.com/PyCQA/isort
-    rev: 5.12.0
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.9
     hooks:
-      - id: isort
-        files: \.py$
-        exclude: ^build/.*$|^.tox/.*$|^venv/.*$
+      - id: ruff # replaces Flake8, isort, pydocstyle, pyupgrade
         args:
-          - --profile=black
-          - --lines-after-imports=2
-
-  - repo: https://github.com/asottile/pyupgrade
-    rev: v3.2.2
-    hooks:
-      - id: pyupgrade
-        args:
-          - --py310-plus
-
-  # Use the `.flake8` file to configure additional project-specific requirements.
-  - repo: https://github.com/PyCQA/flake8
-    rev: 3.9.2
-    hooks:
-      - id: flake8
-        args:
-          - --extend-ignore=E203,W503
-          - --max-line-length=88
-
-  - repo: https://github.com/ambv/black
-    rev: 22.3.0
-    hooks:
-      - id: black
-        args:
-          - --safe
-
-  - repo: https://github.com/pycqa/pydocstyle
-    rev: 6.2.2 # 6.2.3 is slightly broken
-    hooks:
-      - id: pydocstyle
-        args:
-          - --convention=pep257
-          # Additional ignore reasons:
-          # D1xx: we do not want to force contributors to write redundant or useless docstrings
-          # D202: additional whitespace helps with readability
-          # D205: we don't want to always require a single line summary
-          # D211: same as D202
-          # D400: first line doesn't need to end in a period
-          # See the following documentation for what each rule does:
-          # https://www.pydocstyle.org/en/6.2.3/error_codes.html#error-codes
-          - --add-ignore=D1,D202,D205,D211,D400
-
-  - repo: https://github.com/pre-commit/mirrors-eslint
-    rev: v8.15.0
-    hooks:
-      - id: eslint
-        files: \.(js|ts|vue)$
-        exclude: ^load_testing/.*|frontend/(nuxt-template-overrides/.*|.remake/.*)$ # ESLint raises warnings for ignored files.
-        "types": [file] # ESLint only accepts [javascript] by default.
-        args:
-          - --ignore-path=.gitignore
-          - --ignore-path=.eslintignore
-          - --max-warnings=0
-        additional_dependencies:
-          - eslint@8.15.0
-          - eslint-config-prettier@8.5.0
-          - "@babel/eslint-parser@7.19.1"
-          - "@intlify/eslint-plugin-vue-i18n@1.4.0"
-          - "@nuxtjs/eslint-module@3.1.0"
-          - "@typescript-eslint/eslint-plugin@5.44.0"
-          - "@typescript-eslint/parser@5.44.0"
-          - eslint-config-prettier@8.6.0
-          - eslint-import-resolver-custom-alias@1.3.0
-          - eslint-plugin-eslint-comments@3.2.0
-          - eslint-plugin-import@2.27.5
-          - eslint-plugin-prettier@4.2.1
-          - eslint-plugin-tsdoc@0.2.17
-          - eslint-plugin-unicorn@42.0.0
-          - eslint-plugin-vue@9.9.0
-          - eslint-plugin-vuejs-accessibility@1.1.1
-
-  # Use the `.prettierignore` and `.prettier.config.js` files to configure project-specific requirements.
-  - repo: https://github.com/pre-commit/mirrors-prettier
-    rev: v2.6.0
-    hooks:
-      - id: prettier
-        additional_dependencies:
-          - prettier@2.6.0
-          - prettier-plugin-tailwindcss@0.2.2
-          - typescript@4.9.3
+          - --fix
+      - id: ruff-format # replaces Black
 
   - repo: https://github.com/koalaman/shellcheck-precommit
-    rev: v0.8.0
+    rev: v0.10.0
     hooks:
       - id: shellcheck
+
+  - repo: https://github.com/scop/pre-commit-shfmt
+    rev: v3.10.0-2
+    hooks:
+      - id: shfmt-docker
+
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.7
+    hooks:
+      - id: actionlint-docker
+
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.4.1
+    hooks:
+      - id: codespell
+        args: [
+            # Pass skip configuration as command line arguments rather than in the
+            # config file because neither cfg nor TOML support splitting this argument
+            # across multiple lines.
+            # Globs must match the Python `glob` module's format:
+            # https://docs.python.org/3/library/glob.html#module-glob
+            "-S",
+            "sample_data/**",
+            "-S",
+            "frontend/test/tapes/**",
+            "-S",
+            "frontend/test/playwright/e2e/resources/**",
+            "-S",
+            "frontend/test/unit/fixtures/**",
+            "-S",
+            "catalog/tests/dags/providers/provider_api_scripts/resources/**",
+            "-S",
+            "catalog/tests/dags/common/test_resources/**",
+            "-S",
+            "catalog/tests/s3-data/**",
+            # Test locales are non-English and therefore should not be checked by codespell
+            "-S",
+            "frontend/test/locales/*.json",
+            "-S",
+            "pnpm-lock.yaml",
+            # Write changes in place
+            "-w",
+          ]
+        additional_dependencies:
+          # Support pyproject.toml configuration
+          - tomli
 
   - repo: local # More local hooks are defined at the top.
     hooks:
       - id: types
         name: types
-        files: ^frontend/.*$
-        entry: bash -c 'just frontend/run types'
+        files: ^(frontend|packages/js)/.*$
+        entry: pnpm run -r types
         language: system
         pass_filenames: false
+
+      - id: prettier
+        name: prettier
+        "types": [text]
+        language: system
+        pass_filenames: true
+        # Set log-level to error to prevent prettier printing every single file it checks
+        # when running pre-commit with --all-files
+        entry: pnpm exec prettier --write --ignore-unknown --log-level error
+
+      - id: eslint
+        name: eslint
+        files: (frontend|automations|packages/js).*?\.(js|ts|mjs|vue|json5?)$
+        "types": [file] # ESLint only accepts [javascript] by default.
+        language: system
+        pass_filenames: false
+        entry: just eslint
+
       - id: test:unit
         name: test:unit
-        files: ^frontend/.*$
-        entry: bash -c 'just frontend/run test:unit'
+        files: ^(frontend|packages/js)/.*$
+        entry: bash -c 'pnpm run -r test:unit'
         language: system
         pass_filenames: false
         stages:
-          - push
-      - id: render-precommit
-        name: render-precommit
+          - pre-push
+
+      - id: render-release-drafter
+        name: render-release-drafter
         files: ^templates/.*$
-        entry: bash -c 'just automations/js/render-precommit'
+        entry: bash -c 'just automations/js/render-release-drafter'
         language: system
         pass_filenames: false
-      - id: render-prettier
-        name: render-prettier
-        files: ^templates/.*$
-        entry: bash -c 'just automations/js/render-prettier'
+
+      - id: vale
+        name: vale
         language: system
+        entry: bash -c 'just .vale/run'
         pass_filenames: false
-      - id: render-github
-        name: render-github
-        files: ^templates/.*$
-        entry: bash -c 'just automations/js/render-github'
-        language: system
-        pass_filenames: false
+        files: (.vale/.*|.mdx?)$
+
+  - repo: https://github.com/renovatebot/pre-commit-hooks
+    rev: 39.182.3
+    hooks:
+      - id: renovate-config-validator
+        args:
+          - --strict
+          - .github/global-renovate.json5
+          - .github/renovate.json5
+
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.12.0
+    hooks:
+      - id: hadolint-docker

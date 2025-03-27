@@ -1,13 +1,9 @@
 ---
 name: Project Thread
 about: An issue to track and outline a new project
-labels: "project"
+labels: "🧭 project: thread"
 title: "<Replace this with actual title>"
 ---
-
-| Start Date | ETA        | Project Lead | Actual Ship Date |
-| ---------- | ---------- | ------------ | ---------------- |
-| YYYY-MM-DD | YYYY-MM-DD | TBD          | TBD              |
 
 ## Description
 
@@ -16,13 +12,15 @@ title: "<Replace this with actual title>"
 ## Documents
 
 <!-- Please link to these documents once they are written. -->
+<!-- Once a document is merged, please update the link to point at the published document on our documentation site: https://docs.openverse.org/projects/index.html -->
 
 - [ ] Project Proposal
-- [ ] Implementation Plan
+- [ ] Implementation Plan(s)
 
-## Issues
 
-<!-- Link to all of the issues that must be completed as part of this project, typically those created after implementation planning but occasionally existing ones. -->
+## Milestones/Issues
+
+<!-- Link to all the milestones or issues that must be completed as part of this project, typically those created after implementation planning but occasionally existing ones. -->
 
 ## Prior Art
 

@@ -1,0 +1,76 @@
+set dotenv-load := false
+
+COLOR := "\\033[0;32m"
+NO_COLOR := "\\033[0m"
+
+ES_LOCALHOST := "localhost:50292"
+
+# Show all available recipes
+@_default:
+    printf "\n{{ COLOR }}# ES (path: \`docker/es/\`)\n"
+    printf "========================={{ NO_COLOR }}\n"
+    just --list --unsorted
+
+
+##########
+# Health #
+##########
+
+# Check the health of the service
+@health host:
+    -curl -s -o /dev/null -w '%{http_code}' 'http://{{ host }}/_cluster/health'
+
+# Wait for the service to be healthy
+@wait host=ES_LOCALHOST:
+    # The just command on the second line is executed in the context of the
+    # root directory and so must be prefixed with `docker/es/`.
+    just ../../_loop \
+    '"$(just docker/es/health {{ host }})" != "200"' \
+    "Waiting for Elasticsearch to be healthy..."
+
+########
+# cURL #
+########
+
+# Make a cURL request to the given path
+_curl path:
+    -curl \
+      -s \
+      -H 'Accept: application/json' \
+      'http://{{ ES_LOCALHOST }}/{{ path }}'
+
+# Count the number of times the given string appears in the response
+_curl-wc path search:
+    just _curl {{ path }} \
+    | grep -o "{{ search }}" \
+    | wc -l \
+    | xargs
+
+# Check that the given index exists
+@check-index index="image" dest="":
+    just _curl-wc "_cat/indices/{{ index }}" "{{ (if dest == "" { index } else { dest }) }}"
+
+# Wait for the index to be present in Elasticsearch
+@wait-for-index index="image" dest="":
+    # The just command on the second line is executed in the context of the
+    # root directory and so must be prefixed with `docker/es/`.
+    just ../../_loop \
+    '"$(just docker/es/check-index {{ index }} {{ dest }})" != "1"' \
+    "Waiting for index '{{ index }}' to be ready..."
+
+# Check that the given index has the given number of docs
+@check-count index="image" count="5000":
+    just _curl-wc "{{ index }}/_count" '\"count\":{{ count }}'
+
+# Wait for the index to have the given number of docs
+@wait-for-count index="image" count="5000":
+    # The just command on the second line is executed in the context of the
+    # root directory and so must be prefixed with `docker/es/`.
+    just ../../_loop \
+    '"$(just docker/es/check-count {{ index }} {{ count }})" != "1"' \
+    "Waiting for index '{{ index }}' to have {{ count }} docs..." \
+    "10s"
+
+# Delete an index if it exists, ignoring if it doesn't
+@delete-index index="image":
+    curl -X DELETE "http://{{ ES_LOCALHOST }}/{{ index }}?ignore_unavailable=true"

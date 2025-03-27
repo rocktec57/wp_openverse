@@ -10,35 +10,47 @@ on:
 jobs:
   send_message:
     name: Send Slack message
+    # Prevent running this workflow on forks, it's unnecessary for external contributors
+    # Also prevent running this for bot-related PRs
     if: |
       github.actor != 'dependabot[bot]' &&
-      !startsWith(github.event.pull_request.title, '🔄')
+      !startsWith(github.event.pull_request.title, '🔄') &&
+      github.repository_owner == 'WordPress'
     runs-on: ubuntu-latest
     env:
-      slack_url: ${{ secrets.SLACK_WEBHOOK_URL }}
-      pr_url: ${{ github.event.pull_request.html_url }}
-      pr_number: ${{ github.event.pull_request.number }}
-      pr_title: ${{ github.event.pull_request.title }}
-      pr_author: ${{ github.event.pull_request.user.login }}
-      pr_repo: ${{ github.event.pull_request.base.repo.full_name }}
+      EVENT_ACTION: ${{ github.event.action }}
     steps:
-      - name: Send notification for new PR
-        if: github.event.action == 'opened'
-        env:
-          pr_status: ${{ github.event.pull_request.draft && ' draft ' || ' ' }}
-          pr_icon: ${{ github.event.pull_request.draft && ':pr-draft:' || ':pull-request:' }}
-        run: |
-          curl \
-            "$slack_url" \
-            -X POST \
-            -H 'Content-Type: application/json' \
-            -d '{"text":"New'"$pr_status"'PR opened by '"$pr_author"' in '"$pr_repo"': #'"$pr_number"' - '"$pr_title"'","blocks":[{"type":"section","text":{"type":"mrkdwn","text":"'"$pr_icon"' New'"$pr_status"'PR opened by *'"$pr_author"'* in `'"$pr_repo"'`:\n<'"$pr_url"'|#'"$pr_number"' - '"$pr_title"'>"}}]}'
+      - name: Write payload to file
+        uses: actions/github-script@v7
+        with:
+          script: |
+            let { writeFileSync } = await import('fs')
 
-      - name: Send notification for PR marked ready
-        if: github.event.action == 'ready_for_review'
-        run: |
-          curl \
-            "$slack_url" \
-            -X POST \
-            -H 'Content-Type: application/json' \
-            -d '{"text":"PR by '"$pr_author"' in '"$pr_repo"' marked ready for review: #'"$pr_number"' - '"$pr_title"'","blocks":[{"type":"section","text":{"type":"mrkdwn","text":":pull-request: PR by *'"$pr_author"'* in `'"$pr_repo"'` marked ready for review:\n<'"$pr_url"'|#'"$pr_number"' - '"$pr_title"'>"}}]}'
+            const repoName = `${context.repo.owner}/${context.repo.repo}`
+            const { pull_request: pr } = context.payload
+            const isNew = process.env.EVENT_ACTION === 'opened'
+            const emoji = pr.draft ? ':pr-draft:' : ':pull-request:'
+            const adjective = isNew ? pr.draft ? 'New draft ' : 'New ' : ''
+            const verb = isNew ? 'opened' : 'marked ready for review'
+
+            const payload = {
+              text: `${adjective}PR ${verb} by ${pr.user.login} in ${repoName}: #${pr.number} - ${pr.title}`,
+              blocks: [
+                {
+                  type: 'section',
+                  text: {
+                    type: 'mrkdwn',
+                    text: `${emoji} ${adjective}PR ${verb} by *${pr.user.login}* in \`${repoName}\`:\n<${pr.html_url}|#${pr.number} - ${pr.title}>`
+                  }
+                }
+              ]
+            }
+            console.log(JSON.stringify(payload))
+            writeFileSync('/tmp/pr_ping_payload.json', JSON.stringify(payload))
+
+      - name: Send Slack notification
+        uses: slackapi/slack-github-action@v2
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload-file-path: /tmp/pr_ping_payload.json

@@ -1,0 +1,31 @@
+name: openverse/build-docs
+description: Build Openverse full-stack docs
+
+inputs:
+  github_token:
+    required: true
+    description: GitHub token to use for issue link resolution in documentation
+
+runs:
+  using: "composite"
+  steps:
+    - name: Build Sphinx
+      shell: bash
+      env:
+        LINK_ISSUES_GITHUB_TOKEN: ${{ inputs.github_token }}
+      run: |
+        # Pass -W to fail CI if warnings exist
+        just documentation/build -W
+
+    - name: Build Storybook
+      shell: bash
+      run: |
+        just frontend/run storybook:build
+        cp frontend/src/public/favicon_storybook.svg frontend/storybook-static/favicon.svg
+
+    # Storybook will be available at `/storybook`
+    - name: Merge all docs
+      shell: bash
+      run: |
+        mv documentation/_build /tmp/docs
+        mv frontend/storybook-static /tmp/docs/storybook

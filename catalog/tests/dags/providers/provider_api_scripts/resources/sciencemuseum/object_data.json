@@ -1,0 +1,795 @@
+{
+  "type": "objects",
+  "id": "co84905",
+  "attributes": {
+    "@admin": {
+      "processed": 1712780277089,
+      "sequence": 14551455,
+      "uid": "co84905",
+      "added": 1699635037320,
+      "stream": "collections-online",
+      "id": "object-84905",
+      "source": "Mimsy XG",
+      "uuid": "77141d34-8389-35c9-a2aa-d4bedd67c9b5"
+    },
+    "category": [
+      {
+        "museum": "SCM",
+        "name": "Classical & Medieval Medicine",
+        "type": "category1",
+        "value": "SCM - Classical & Medieval Medicine"
+      }
+    ],
+    "creation": {
+      "date": [
+        {
+          "source": "catalogue",
+          "value": "200BCE-200CE",
+          "primary": true
+        },
+        {
+          "role": [
+            {
+              "value": "made"
+            }
+          ],
+          "from": "-200",
+          "to": "200",
+          "value": "200BCE-200CE"
+        }
+      ],
+      "maker": [
+        {
+          "summary": {
+            "title": "Unknown maker"
+          },
+          "@link": {
+            "source": "catalogue"
+          },
+          "name": [
+            {
+              "value": "Unknown maker"
+            }
+          ],
+          "@entity": "literal"
+        }
+      ],
+      "place": [
+        {
+          "summary": {
+            "title": "Italy"
+          },
+          "@link": {
+            "source": "catalogue"
+          },
+          "name": [
+            {
+              "value": "Italy"
+            }
+          ],
+          "@entity": "literal"
+        },
+        {
+          "summary": {
+            "title": "Italy"
+          },
+          "@link": {
+            "attribution": {
+              "date": [
+                {
+                  "from": "2019",
+                  "to": "2019",
+                  "value": "2019-04-17",
+                  "primary": true
+                }
+              ],
+              "attributor": "ANNE_SHARMAN"
+            }
+          },
+          "@admin": {
+            "uid": "cd159",
+            "id": "place-159",
+            "uuid": "381c3c27-5c3a-317f-8db3-5af8513ed871"
+          },
+          "@entity": "reference"
+        }
+      ],
+      "@entity": "lifecycle"
+    },
+    "cumulation": {
+      "collector": [
+        {
+          "summary": {
+            "title": "Sir Henry Wellcome's Museum Collection"
+          },
+          "@link": {
+            "source": "catalogue"
+          },
+          "name": [
+            {
+              "value": "Sir Henry Wellcome's Museum Collection"
+            }
+          ],
+          "@entity": "literal"
+        }
+      ],
+      "@entity": "lifecycle"
+    },
+    "description": [
+      {
+        "type": "catalogue description",
+        "value": "Small votive organ of unknown type, built up from coiled strips of terracotta, probably Roman, 200BCE-200BC",
+        "primary": true
+      },
+      {
+        "type": "accession register",
+        "value": "Small votive organ of unknown type, built up from coiled strips of terraccotta, probably Roman, 200BC-200"
+      },
+      {
+        "type": "description",
+        "value": "Small votive organ of unknown type, built up from coiled strips of terracotta, probably Roman, 200BC-200"
+      },
+      {
+        "type": "description",
+        "value": "Small votive organ of unknown type, built up from coiled strips of terracotta, probably Roman, 200BCE-200BC"
+      }
+    ],
+    "identifier": [
+      {
+        "type": "accession number",
+        "value": "A659676",
+        "primary": true
+      },
+      {
+        "value": "37567"
+      }
+    ],
+    "language": [
+      {
+        "value": "eng"
+      }
+    ],
+    "legal": {
+      "credit": "Loan, Wellcome Trust"
+    },
+    "measurements": {
+      "display": "overall: 41 mm x 40 mm x 38 mm, .04 kg",
+      "count": "1",
+      "dimensions": [
+        {
+          "type": "catalogue dimensions",
+          "value": "overall: 41 mm x 40 mm x 38 mm, 0.04 kg",
+          "primary": true
+        },
+        {
+          "units": "in",
+          "dimension": "depth",
+          "value": "1 1/2"
+        },
+        {
+          "units": "mm",
+          "dimension": "depth",
+          "value": "38"
+        },
+        {
+          "units": "in",
+          "dimension": "height",
+          "value": "1 5/8"
+        },
+        {
+          "units": "mm",
+          "dimension": "height",
+          "value": "41"
+        },
+        {
+          "units": "kg",
+          "dimension": "weight",
+          "value": "0.04"
+        },
+        {
+          "units": "lbs",
+          "dimension": "weight",
+          "value": "0.08819"
+        },
+        {
+          "units": "in",
+          "dimension": "width",
+          "value": "1 9/16"
+        },
+        {
+          "units": "mm",
+          "dimension": "width",
+          "value": "40"
+        },
+        {
+          "units": "mm",
+          "value": "43"
+        }
+      ]
+    },
+    "multimedia": [
+      {
+        "@admin": {
+          "uid": "i458349",
+          "id": "media-458349",
+          "source": "smgi",
+          "uuid": "24b84b80-47a7-376d-aabf-07b838240715"
+        },
+        "@processed": {
+          "large": {
+            "resizable": true,
+            "@type": "image",
+            "format": "jpeg",
+            "modified": 1697087683000,
+            "location": "458/349/large_a659676__0001_.jpg",
+            "measurements": {
+              "filesize": {
+                "units": "bytes",
+                "value": 134947
+              },
+              "dimensions": [
+                {
+                  "units": "pixels",
+                  "dimension": "height",
+                  "value": 1150
+                },
+                {
+                  "units": "pixels",
+                  "dimension": "width",
+                  "value": 1536
+                }
+              ]
+            }
+          },
+          "small_thumbnail": {
+            "resizable": true,
+            "@type": "image",
+            "format": "jpeg",
+            "modified": 1697087683000,
+            "location": "458/349/small_thumbnail_a659676__0001_.jpg",
+            "measurements": {
+              "filesize": {
+                "units": "bytes",
+                "value": 18125
+              },
+              "dimensions": [
+                {
+                  "units": "pixels",
+                  "dimension": "height",
+                  "value": 48
+                },
+                {
+                  "units": "pixels",
+                  "dimension": "width",
+                  "value": 64
+                }
+              ]
+            }
+          },
+          "zoom": {
+            "resizable": true,
+            "@type": "image",
+            "format": "pyramid tiff",
+            "modified": 1697087683000,
+            "location": "458/349/Small_votive_organ_of_unknown_type.ptif",
+            "measurements": {
+              "filesize": {
+                "units": "bytes",
+                "value": 120104992
+              },
+              "dimensions": [
+                {
+                  "units": "pixels",
+                  "dimension": "height",
+                  "value": 5474
+                },
+                {
+                  "units": "pixels",
+                  "dimension": "width",
+                  "value": 7312
+                }
+              ]
+            }
+          },
+          "medium": {
+            "resizable": true,
+            "@type": "image",
+            "format": "jpeg",
+            "modified": 1697087683000,
+            "location": "458/349/medium_a659676__0001_.jpg",
+            "measurements": {
+              "filesize": {
+                "units": "bytes",
+                "value": 48013
+              },
+              "dimensions": [
+                {
+                  "units": "pixels",
+                  "dimension": "height",
+                  "value": 576
+                },
+                {
+                  "units": "pixels",
+                  "dimension": "width",
+                  "value": 769
+                }
+              ]
+            }
+          },
+          "large_thumbnail": {
+            "resizable": true,
+            "@type": "image",
+            "format": "jpeg",
+            "modified": 1697087683000,
+            "location": "https://coimages.sciencemuseumgroup.org.uk/458/352/large_thumbnail_a659676__0003_.jpg",
+            "measurements": {
+              "filesize": {
+                "units": "bytes",
+                "value": 23438
+              },
+              "dimensions": [
+                {
+                  "units": "pixels",
+                  "dimension": "height",
+                  "value": 240
+                },
+                {
+                  "units": "pixels",
+                  "dimension": "width",
+                  "value": 321
+                }
+              ]
+            }
+          },
+          "medium_thumbnail": {
+            "resizable": true,
+            "@type": "image",
+            "format": "jpeg",
+            "modified": 1697087683000,
+            "location": "458/349/medium_thumbnail_a659676__0001_.jpg",
+            "measurements": {
+              "filesize": {
+                "units": "bytes",
+                "value": 19924
+              },
+              "dimensions": [
+                {
+                  "units": "pixels",
+                  "dimension": "height",
+                  "value": 144
+                },
+                {
+                  "units": "pixels",
+                  "dimension": "width",
+                  "value": 192
+                }
+              ]
+            }
+          }
+        },
+        "@type": "image",
+        "upload_sort": "24/04/2020",
+        "legal": {
+          "rights": [
+            {
+              "licence": "CC BY-SA 4.0",
+              "copyright": "© The Board of Trustees of the Science Museum, London"
+            }
+          ]
+        },
+        "credit": {
+          "value": "Science Museum Group Collections"
+        },
+        "title": [
+          {
+            "type": "caption",
+            "value": "Small votive organ of unknown type"
+          }
+        ],
+        "@entity": "reference"
+      },
+      {
+        "@admin": {
+          "uid": "i458351",
+          "id": "media-458351",
+          "source": "smgi",
+          "uuid": "afdc103f-10a2-31ee-a870-a004a94053df"
+        },
+        "@processed": {
+          "large": {
+            "resizable": true,
+            "@type": "image",
+            "format": "jpeg",
+            "modified": 1697087687000,
+            "location": "458/351/large_a659676__0002_.jpg",
+            "measurements": {
+              "filesize": {
+                "units": "bytes",
+                "value": 131124
+              },
+              "dimensions": [
+                {
+                  "units": "pixels",
+                  "dimension": "height",
+                  "value": 1150
+                },
+                {
+                  "units": "pixels",
+                  "dimension": "width",
+                  "value": 1536
+                }
+              ]
+            }
+          },
+          "small_thumbnail": {
+            "resizable": true,
+            "@type": "image",
+            "format": "jpeg",
+            "modified": 1697087687000,
+            "location": "458/351/small_thumbnail_a659676__0002_.jpg",
+            "measurements": {
+              "filesize": {
+                "units": "bytes",
+                "value": 18114
+              },
+              "dimensions": [
+                {
+                  "units": "pixels",
+                  "dimension": "height",
+                  "value": 48
+                },
+                {
+                  "units": "pixels",
+                  "dimension": "width",
+                  "value": 64
+                }
+              ]
+            }
+          },
+          "zoom": {
+            "resizable": true,
+            "@type": "image",
+            "format": "pyramid tiff",
+            "modified": 1697087687000,
+            "location": "458/351/Small_votive_organ_of_unknown_type.ptif",
+            "measurements": {
+              "filesize": {
+                "units": "bytes",
+                "value": 120105572
+              },
+              "dimensions": [
+                {
+                  "units": "pixels",
+                  "dimension": "height",
+                  "value": 5474
+                },
+                {
+                  "units": "pixels",
+                  "dimension": "width",
+                  "value": 7312
+                }
+              ]
+            }
+          },
+          "medium": {
+            "resizable": true,
+            "@type": "image",
+            "format": "jpeg",
+            "modified": 1697087687000,
+            "location": "458/351/medium_a659676__0002_.jpg",
+            "measurements": {
+              "filesize": {
+                "units": "bytes",
+                "value": 46593
+              },
+              "dimensions": [
+                {
+                  "units": "pixels",
+                  "dimension": "height",
+                  "value": 576
+                },
+                {
+                  "units": "pixels",
+                  "dimension": "width",
+                  "value": 769
+                }
+              ]
+            }
+          },
+          "large_thumbnail": {
+            "resizable": true,
+            "@type": "image",
+            "format": "jpeg",
+            "modified": 1697087687000,
+            "location": "458/351/large_thumbnail_a659676__0002_.jpg",
+            "measurements": {
+              "filesize": {
+                "units": "bytes",
+                "value": 22983
+              },
+              "dimensions": [
+                {
+                  "units": "pixels",
+                  "dimension": "height",
+                  "value": 240
+                },
+                {
+                  "units": "pixels",
+                  "dimension": "width",
+                  "value": 321
+                }
+              ]
+            }
+          },
+          "medium_thumbnail": {
+            "resizable": true,
+            "@type": "image",
+            "format": "jpeg",
+            "modified": 1697087687000,
+            "location": "458/351/medium_thumbnail_a659676__0002_.jpg",
+            "measurements": {
+              "filesize": {
+                "units": "bytes",
+                "value": 19791
+              },
+              "dimensions": [
+                {
+                  "units": "pixels",
+                  "dimension": "height",
+                  "value": 144
+                },
+                {
+                  "units": "pixels",
+                  "dimension": "width",
+                  "value": 192
+                }
+              ]
+            }
+          }
+        },
+        "@type": "image",
+        "upload_sort": "24/04/2020",
+        "legal": {
+          "rights": [
+            {
+              "licence": "CC BY-SA 4.0",
+              "copyright": "© The Board of Trustees of the Science Museum, London"
+            }
+          ]
+        },
+        "credit": {
+          "value": "Science Museum Group Collections"
+        },
+        "title": [
+          {
+            "type": "caption",
+            "value": "Small votive organ of unknown type"
+          }
+        ],
+        "@entity": "reference"
+      },
+      {
+        "@admin": {
+          "uid": "i458352",
+          "id": "media-458352",
+          "source": "smgi",
+          "uuid": "674f884d-b51b-31f8-860a-4b167f337c67"
+        },
+        "@processed": {
+          "large": {
+            "resizable": true,
+            "@type": "image",
+            "format": "jpeg",
+            "modified": 1697087687000,
+            "location": "458/352/large_a659676__0003_.jpg",
+            "measurements": {
+              "filesize": {
+                "units": "bytes",
+                "value": 128214
+              },
+              "dimensions": [
+                {
+                  "units": "pixels",
+                  "dimension": "height",
+                  "value": 1150
+                },
+                {
+                  "units": "pixels",
+                  "dimension": "width",
+                  "value": 1536
+                }
+              ]
+            }
+          },
+          "small_thumbnail": {
+            "resizable": true,
+            "@type": "image",
+            "format": "jpeg",
+            "modified": 1697087687000,
+            "location": "458/352/small_thumbnail_a659676__0003_.jpg",
+            "measurements": {
+              "filesize": {
+                "units": "bytes",
+                "value": 18124
+              },
+              "dimensions": [
+                {
+                  "units": "pixels",
+                  "dimension": "height",
+                  "value": 48
+                },
+                {
+                  "units": "pixels",
+                  "dimension": "width",
+                  "value": 64
+                }
+              ]
+            }
+          },
+          "zoom": {
+            "resizable": true,
+            "@type": "image",
+            "format": "pyramid tiff",
+            "modified": 1697087687000,
+            "location": "458/352/Small_votive_organ_of_unknown_type.ptif",
+            "measurements": {
+              "filesize": {
+                "units": "bytes",
+                "value": 120105504
+              },
+              "dimensions": [
+                {
+                  "units": "pixels",
+                  "dimension": "height",
+                  "value": 5474
+                },
+                {
+                  "units": "pixels",
+                  "dimension": "width",
+                  "value": 7312
+                }
+              ]
+            }
+          },
+          "medium": {
+            "resizable": true,
+            "@type": "image",
+            "format": "jpeg",
+            "modified": 1697087687000,
+            "location": "458/352/medium_a659676__0003_.jpg",
+            "measurements": {
+              "filesize": {
+                "units": "bytes",
+                "value": 46746
+              },
+              "dimensions": [
+                {
+                  "units": "pixels",
+                  "dimension": "height",
+                  "value": 576
+                },
+                {
+                  "units": "pixels",
+                  "dimension": "width",
+                  "value": 769
+                }
+              ]
+            }
+          },
+          "large_thumbnail": {
+            "resizable": true,
+            "@type": "image",
+            "format": "jpeg",
+            "modified": 1697087687000,
+            "location": "458/352/large_thumbnail_a659676__0003_.jpg",
+            "measurements": {
+              "filesize": {
+                "units": "bytes",
+                "value": 23172
+              },
+              "dimensions": [
+                {
+                  "units": "pixels",
+                  "dimension": "height",
+                  "value": 240
+                },
+                {
+                  "units": "pixels",
+                  "dimension": "width",
+                  "value": 321
+                }
+              ]
+            }
+          },
+          "medium_thumbnail": {
+            "resizable": true,
+            "@type": "image",
+            "format": "jpeg",
+            "modified": 1697087687000,
+            "location": "458/352/medium_thumbnail_a659676__0003_.jpg",
+            "measurements": {
+              "filesize": {
+                "units": "bytes",
+                "value": 19840
+              },
+              "dimensions": [
+                {
+                  "units": "pixels",
+                  "dimension": "height",
+                  "value": 144
+                },
+                {
+                  "units": "pixels",
+                  "dimension": "width",
+                  "value": 192
+                }
+              ]
+            }
+          }
+        },
+        "@type": "image",
+        "upload_sort": "24/04/2020",
+        "legal": {
+          "rights": [
+            {
+              "licence": "CC BY-SA 4.0",
+              "copyright": "© The Board of Trustees of the Science Museum, London"
+            }
+          ]
+        },
+        "credit": {
+          "value": "Science Museum Group Collections"
+        },
+        "title": [
+          {
+            "type": "caption",
+            "value": "Small votive organ of unknown type"
+          }
+        ],
+        "@entity": "reference"
+      }
+    ],
+    "name": [
+      {
+        "type": "catalogue name",
+        "value": "votive viscera",
+        "primary": true
+      },
+      {
+        "type": "object name",
+        "value": "votive viscera"
+      }
+    ],
+    "summary": {
+      "title": "Small votive organ of unknown type (votive viscera)"
+    },
+    "title": [
+      {
+        "type": "catalogue title",
+        "value": "Small votive organ of unknown type",
+        "primary": true
+      },
+      {
+        "type": "display title",
+        "value": "Small votive organ of unknown type, built up from"
+      },
+      {
+        "type": "display title",
+        "value": "Small votive organ of unknown type"
+      }
+    ]
+  },
+  "relationships": {
+    "place": {
+      "data": [
+        {
+          "type": "place",
+          "id": "undefined"
+        }
+      ]
+    }
+  },
+  "links": {
+    "self": "https://collection.sciencemuseumgroup.org.uk/objects/co84905/small-votive-organ-of-unknown-type-votive-viscera"
+  }
+}

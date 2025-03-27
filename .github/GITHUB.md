@@ -61,18 +61,12 @@ truth, it creates PRs to resolve any differences.
 
 ### New issue automation
 
-This workflow adds issues to the "Backlog" column in the Openverse project as
-soon as they are created.
+This workflow adds issues to the "Backlog" column in the
+[Openverse project](https://github.com/orgs/WordPress/projects/75/) as soon as
+they are created. It also adds a priority field value to the project item based
+on the priority label applied to the issue.
 
 **Issue:** opened  
-**Dispatch:** disabled
-
-### New PR automation
-
-This workflow adds PRs to the "In progress" or "Needs review" columns in the
-Openverse PRs project, based on whether they are marked as draft or ready.
-
-**PR:** opened, converted_to_draft, ready_for_review  
 **Dispatch:** disabled
 
 ### PR label check
@@ -91,15 +85,3 @@ channel. This ping is not sent for PRs made by Dependabot and downstream sync
 action.
 
 **PR:** opened
-
-## Downstream workflows
-
-These workflows run only in the downstream synced repos and not in `openverse`.
-
-### Draft release
-
-This workflow updates the draft release message when new commits are added to
-`main` so that there is a ready-to-go changelog when publishing a new release.
-
-**Push:** Branch `main`  
-**Config:** `.github/release_drafter.yml`

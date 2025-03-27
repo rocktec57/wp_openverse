@@ -1,0 +1,86 @@
+# Initialises all automations related to PR events.
+#
+# See `issue_automations.yml` for the corresponding implementation for issues.
+#
+# The automations for PR events are a little more complex than those for issues
+# because PRs are a less secure environment. To avoid leaking secrets, we need
+# to run automations with code as it appears on `main`.
+#
+# `pull_request_target` serves this purpose but there is no corresponding
+# `_target` version for `pull_request_review`. So we take this roundabout
+# approach:
+#
+# 1. This workflow runs for the events and their subtypes we are interested in.
+# 2. It saves the event name, action and PR node ID to a JSON file.
+# 3. It uploads the JSON file as an artifact.
+# 4. Its completion triggers the `pr_automations.yml` workflow.
+#
+# continued in `pr_automations.yml`...
+
+name: PR automations init
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - edited
+      - converted_to_draft
+      - ready_for_review
+      - closed
+  pull_request_review:
+    types:
+      - submitted
+      - dismissed
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.node_id }}
+
+jobs:
+  change-info:
+    name: Save change info
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    # Prevent running this workflow on forks, it's unnecessary for external contributors
+    if: github.repository_owner == 'WordPress'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get changes
+        id: paths-filter
+        uses: ./.github/actions/get-changes
+
+      - name: Save change info
+        run: |
+          echo "$CHANGES" > /tmp/change.json
+        env:
+          CHANGES: ${{ steps.paths-filter.outputs.changes }}
+
+      - name: Upload change info as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: change_info
+          path: /tmp/change.json
+
+  event-info:
+    name: Save event info
+    runs-on: ubuntu-latest
+    # Prevent running this workflow on forks, it's unnecessary for external contributors
+    if: github.repository_owner == 'WordPress'
+    steps:
+      - name: Save event info
+        run: |
+          echo '{"eventName": "'"$EVENT_NAME"'", "eventAction": "'"$EVENT_ACTION"'", "prNodeId": "'"$PR_NODE_ID"'"}' > /tmp/event.json
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_ACTION: ${{ github.event.action }}
+          PR_NODE_ID: ${{ github.event.pull_request.node_id }}
+
+      - name: Upload event info as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: event_info
+          path: /tmp/event.json

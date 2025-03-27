@@ -1,0 +1,60 @@
+name: openverse/load-img
+description: Download and import Docker images from artifacts
+
+inputs:
+  run_id:
+    description: The ID of the current workflow run
+    required: true
+
+  setup_images:
+    default: "upstream_db ingestion_server catalog_indexer_worker catalog api api_nginx frontend"
+    description: Space-separated list of image names
+
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup `pnpm`
+      uses: ./.github/actions/setup-env
+      with:
+        # We just need to be able to use `pnpm`. `npm` will fail on
+        # any `workspace:*` dependency which we have in the root `package.json`
+        setup_python: false
+        install_recipe: ""
+
+    - name: Install `@actions/artifact`
+      shell: bash
+      run: |
+        pnpm install @actions/artifact -w
+
+    - name: Download images
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { DefaultArtifactClient } = require('@actions/artifact')
+          const artifact = new DefaultArtifactClient()
+          const images = '${{ inputs.setup_images }}'.split(' ')
+          const [repositoryOwner, repositoryName] = '${{ github.repository }}'.split('/')
+          const findBy = {
+            repositoryOwner,
+            repositoryName,
+            workflowRunId: '${{ inputs.run_id }}',
+            token: '${{ github.token }}',
+          }
+          const workflowArtifacts = await artifact.listArtifacts({ findBy })
+          await Promise.all(
+            workflowArtifacts.artifacts
+              .filter((item) => images.includes(item.name))
+              .map((item) => artifact.downloadArtifact(item.id, { findBy, path: '/tmp' }))
+          )
+          console.log('Downloaded artifacts')
+
+    - name: Load images
+      shell: bash
+      run: |
+        images=(${{ inputs.setup_images }});
+        for image in "${images[@]}"; do
+          docker load --input /tmp/${image}.tar
+        done

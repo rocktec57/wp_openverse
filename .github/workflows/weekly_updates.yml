@@ -9,42 +9,23 @@ on:
 env:
   ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
   MAKE_USERNAME: ${{ secrets.MAKE_USERNAME }}
-  MAKE_PASSWORD: ${{ secrets.MAKE_PASSWORD }}
+  MAKE_PASSWORD: ${{ secrets.MAKE_PASSWORD }} # application password, not login password
 
 jobs:
   make_post:
     name: Create post on Make site
     runs-on: ubuntu-latest
+    # Prevent running this workflow on forks, it's unnecessary for external contributors
+    if: github.repository_owner == 'WordPress'
     steps:
-      - uses: pnpm/action-setup@v2.2.4
-        with:
-          # Ensure that this value matches `packageManager` field.
-          version: 7.17.1
-
-      - name: Cache pnpm modules
-        uses: actions/cache@v3
-        with:
-          path: ~/.local/share/pnpm/store
-          key: ${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-
-
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+      - name: Setup CI env
+        uses: ./.github/actions/setup-env
         with:
-          node-version: 16
-          cache: pnpm
-          cache-dependency-path: |
-            pnpm-lock.yaml
-            .npmrc
+          setup_python: false
+          install_recipe: node-install
 
-      - name: Install dependencies
-        working-directory: ./automations/js
-        run: "pnpm install"
-
-      - name: Create draft post
-        working-directory: ./automations/js
-        run: node src/last_week_tonight.js
+      - name: Publish post
+        run: just automations/js/report

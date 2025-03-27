@@ -1,0 +1,19 @@
+name: openverse/get-changes
+description: Determine where changes happened in the repository
+
+outputs:
+  changes:
+    description: "JSON array of keys from `.github/filters.yml`"
+    value: ${{ steps.paths-filter.outputs.changes }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - id: paths-filter
+      name: Check changed paths
+      uses: dorny/paths-filter@v3
+      with:
+        filters: ./.github/filters.yml

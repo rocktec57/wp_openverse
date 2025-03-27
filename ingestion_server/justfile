@@ -1,0 +1,113 @@
+set dotenv-load := false
+
+COLOR := "\\033[0;36m"
+NO_COLOR := "\\033[0m"
+IS_CI := env_var_or_default("CI", "")
+
+# Show all available recipes
+@_default:
+    printf "\n{{ COLOR }}# Ingestion server (path: \`ingestion_server/\`)\n"
+    printf "=============================================={{ NO_COLOR }}\n"
+    just --list --unsorted
+
+
+###########
+# Version #
+###########
+
+export INGESTION_PY_VERSION := `grep 'python_version' Pipfile | awk -F' = ' '{print $2}' | sed 's/"//g'`
+
+# Print the Python version specified in the `Pipfile`
+@py-version:
+    echo $INGESTION_PY_VERSION
+
+###########
+# Install #
+###########
+
+# Install dependencies
+install *args="--dev":
+    pipenv install {{ args }}
+
+######
+# Up #
+######
+
+# Bring up services specific to the ingestion server profile
+up *flags:
+    env COMPOSE_PROFILES="ingestion_server" just ../up {{ flags }}
+
+# Wait for all profile services to be up
+wait-up: up
+    just wait
+
+##########
+# Health #
+##########
+
+# Check the health of the service
+@health host="localhost:50281":
+    -curl -s -o /dev/null -w '%{http_code}' 'http://{{ host }}/'
+
+# Wait for the service to be healthy
+@wait host="localhost:50281":
+    # The just command on the second line is executed in the context of the
+    # parent directory and so must be prefixed with `ingestion_server/`.
+    just ../_loop \
+    '"$(just ingestion_server/health {{ host }})" != "200"' \
+    "Waiting for the ingestion-server to be healthy..."
+
+########
+# cURL #
+########
+
+# Make a cURL POST request to the service with the given data
+curl-post data host="localhost:50281":
+    STATUS_CODE=$(curl \
+      -X POST \
+      -H 'Content-Type: application/json' \
+      -d '{{ data }}' \
+      -o /dev/stderr \
+      -w "%{http_code}" \
+      'http://{{ host }}/task'); \
+    if [ $STATUS_CODE -lt 200 ] || [ $STATUS_CODE -ge 300 ]; then \
+      echo "Status: $STATUS_CODE"; \
+      exit 1; \
+    fi
+
+# Load sample data into temp table in API and new index in Elasticsearch
+ingest-upstream model="image" suffix="init":
+    just curl-post '{"model": "{{ model }}", "action": "INGEST_UPSTREAM", "index_suffix": "{{ suffix }}"}'
+
+# Promote temp table to prod in API and new index to primary in Elasticsearch
+promote model="image" suffix="init" alias="image":
+    just curl-post '{"model": "{{ model }}", "action": "PROMOTE", "index_suffix": "{{ suffix }}", "alias": "{{ alias }}"}'
+
+# Delete an index in Elasticsearch
+delete model="image" suffix="init" alias="image":
+    just curl-post '{"model": "{{ model }}", "action": "DELETE_INDEX", "index_suffix": "{{ suffix }}"}'
+
+point-alias model suffix alias:
+    just curl-post '{"model": "{{ model }}", "action": "POINT_ALIAS", "index_suffix": "{{ suffix }}", "alias": "{{ alias }}"}'
+
+create-and-populate-filtered-index model="image" destination_suffix="init":
+    just curl-post '{"model": "{{ model }}", "action": "CREATE_AND_POPULATE_FILTERED_INDEX", "destination_index_suffix": "{{ destination_suffix }}"}'
+
+#########
+# Tests #
+#########
+
+# Run ingestion-server tests locally
+test-local *args:
+    # populate the tldextract cache before running tests to prevent unnecessary network requests during tests
+    # and from needing to mock essentially unmockable responses
+    pipenv run tldextract --update
+    pipenv run pytest {{ args }}
+    {{ if IS_CI == "" { "just test-logs > test/ingestion_logs.txt && just test-clean-dc" } else { "" } }}
+
+test-logs:
+    docker compose --profile=ingestion_server -f test/integration-docker-compose.yml logs --no-color
+
+# Clean integration test docker-compose stack. Is run after tests are finished locally.
+test-clean-dc:
+    docker compose --profile=ingestion_server -f test/integration-docker-compose.yml down -v

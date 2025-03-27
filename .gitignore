@@ -6,13 +6,20 @@
 .idea/
 .vscode/
 .swp
+*.iml
+
+# General detritus
+logs/
 
 # Environment
 .env
+.env.bkp-*
+.ov_profile.json
 
 # Python environments
 env/
 venv/
+.venv/
 pip-log.txt
 
 # Python
@@ -24,6 +31,15 @@ __pycache__/
 node_modules/
 npm-debug.log*
 .pnpm-debug.log
+.pnpm-store/
+
+# Nuxt
+.nuxt
+node-jiti/
+
+# Airflow
+airflow.cfg
+airflow.db
 
 # Local certificates
 *.pem
@@ -32,6 +48,9 @@ npm-debug.log*
 
 # pre-commit
 pre-commit.pyz
+
+# Ruff
+.ruff_cache
 
 # ESLint
 .eslintcache
@@ -46,3 +65,14 @@ grafana.db
 # Ingestion server
 # TODO: This shouldn't be in root
 ingestion_server.log
+
+*.tsbuildinfo
+
+dist
+
+# PDM
+.pdm-python
+.pdm-build
+
+# ov development environment
+v8-compile-cache*

@@ -1,0 +1,5 @@
+install:
+    pdm install
+
+run:
+    pdm run __main__.py

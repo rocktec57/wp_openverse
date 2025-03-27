@@ -1,0 +1,4 @@
+vale_*_*
+styles/*
+!styles/config/
+!styles/Openverse/

@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "allowSyntheticDefaultImports": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "esModuleInterop": true,
+    /* Strict Type-Checking Options */
+    "strict": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "paths": {
+      "@openverse/*": ["./packages/js/*/src"]
+    },
+
+    /**
+     * Disable these in favour of more flexible ESLint rule.
+     *
+     * https://typescript-eslint.io/rules/no-unused-vars/#benefits-over-typescript
+     */
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  }
+}

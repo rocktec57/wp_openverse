@@ -10,13 +10,9 @@ inputs:
     default: "true"
     description: Whether to set up Node.js and dependencies
 
-  install_deps:
-    default: "true"
-    description: Whether to install dependencies using Just
-
-  github_token:
-    required: true
-    description: The token to authenticate calls to the GitHub API
+  locales:
+    default: ""
+    description: The locales to set up. "test" for copying from `frontend/test/locales`, "production" for downloading from GlotPress.
 
   install_recipe:
     default: "install"
@@ -27,43 +23,40 @@ runs:
   steps:
     # Just
     - name: Setup just
-      uses: extractions/setup-just@v1
-      env:
-        GITHUB_TOKEN: ${{ inputs.github_token }}
+      uses: taiki-e/install-action@v2
+      with:
+        tool: just
 
     # Python
     - name: Setup Python
       if: inputs.setup_python == 'true'
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
-        # Ensure that it matches `python_version` field in the following files:
-        # - `automations/python/Pipfile`
-        # - `dead_links/Pipfile`
-        python-version: "3.10"
-        cache: pipenv
-        cache-dependency-path: |
-          **/Pipfile.lock
+        # Ensure that it matches the `requires-python` field in various
+        # `pyproject.toml` files.
+        python-version: |
+          3.11
+          3.12
 
     - name: Setup global Python deps
       if: inputs.setup_python == 'true'
       shell: bash
+      # TODO: Try using `pipx` here instead of `pip`.
       run: |
         pip install -U pip
-        pip install pipenv
+        pip install pipenv pdm
 
-    # Node.js
     - name: Setup pnpm
       if: inputs.setup_nodejs == 'true'
-      uses: pnpm/action-setup@v2
-      # Automatically reads `packageManager` field from root `package.json`.
+      shell: bash
+      # Fix for https://github.com/nodejs/corepack/issues/612
+      run: npm install -g corepack@0.31.0 && corepack enable pnpm
 
     - name: Setup Node.js
       if: inputs.setup_nodejs == 'true'
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v4
       with:
-        # Ensure that it matches `engines` field in the following files:
-        # - `package.json`
-        node-version: "16"
+        node-version-file: "package.json"
         cache: pnpm
         cache-dependency-path: |
           **/pnpm-lock.yaml
@@ -71,7 +64,14 @@ runs:
 
     # Install dependencies
     - name: Install dependencies
-      if: inputs.install_deps == 'true'
+      if: inputs.install_recipe != ''
       shell: bash
       run: |
         just ${{ inputs.install_recipe }}
+
+    # Set up locales
+    - name: Setup locales
+      if: inputs.locales != ''
+      shell: bash
+      run: |
+        just locales ${{ inputs.locales }}

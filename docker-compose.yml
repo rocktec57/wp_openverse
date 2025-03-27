@@ -1,0 +1,125 @@
+include:
+  - "catalog/compose.yml"
+  - "ingestion_server/compose.yml"
+  - "api/compose.yml"
+  - "frontend/compose.yml"
+  - "indexer_worker/compose.yml"
+
+services:
+  # Database used by the API
+  db:
+    profiles:
+      - ingestion_server
+      - api
+      - catalog_indexer_worker
+    image: docker.io/postgres:13.10-alpine
+    ports:
+      - "50254:5432"
+    volumes:
+      - api-postgres:/var/lib/postgresql/data
+    env_file:
+      - docker/db/env.docker
+    healthcheck:
+      test: "pg_isready"
+
+  # Database used by the catalog
+  upstream_db:
+    profiles:
+      - catalog
+      - catalog_dependencies
+      - ingestion_server
+      - catalog_indexer_worker
+      - api
+    build:
+      context: ./docker/upstream_db/
+      target: db
+      args: # Automatically inferred from env vars, unless specified
+        - PGCLI_VERSION
+    image: openverse-upstream_db
+    pull_policy: never
+    ports:
+      - "50255:5432"
+    volumes:
+      - catalog-postgres:/var/lib/postgresql/data
+      - ./sample_data:/sample_data:z
+    env_file:
+      - docker/upstream_db/env.docker
+    healthcheck:
+      test: "pg_isready"
+
+  plausible_db:
+    profiles:
+      - frontend
+    image: docker.io/postgres:13.10-alpine
+    expose:
+      - "5432"
+    volumes:
+      - plausible-postgres:/var/lib/postgresql/data
+    env_file:
+      - ./docker/plausible_db/env.docker
+    healthcheck:
+      test: "pg_isready -U deploy -d plausible"
+
+  plausible_ch:
+    profiles:
+      - frontend
+    image: docker.io/clickhouse/clickhouse-server:23.12-alpine
+    volumes:
+      - plausible-clickhouse:/var/lib/clickhouse
+      - ./docker/clickhouse/clickhouse-config.xml:/etc/clickhouse-server/config.d/logging.xml:ro,z
+      - ./docker/clickhouse/clickhouse-user-config.xml:/etc/clickhouse-server/users.d/logging.xml:ro,z
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+
+  plausible:
+    profiles:
+      - frontend
+    image: plausible/analytics:latest
+    ports:
+      - "50288:8000"
+    command: sh -c "sleep 10 && /entrypoint.sh db createdb && /entrypoint.sh db migrate && /entrypoint.sh run"
+    depends_on:
+      - plausible_db
+      - plausible_ch
+    env_file:
+      - docker/plausible/env.docker
+
+  es:
+    profiles:
+      - ingestion_server
+      - catalog_indexer_worker
+      - api
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.8.2
+    ports:
+      - "50292:9200"
+    environment:
+      # Elasticsearch will reserve 50-60% of available system memory
+      # if left to its own devices. Setting this to half a GB is sufficient
+      # for local testing and prevent ES from hogging such a significant
+      # amount of system memory.
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -si -XGET 'localhost:9200/_cluster/health?pretty' | grep -qE 'yellow|green'",
+        ]
+      interval: 10s
+      timeout: 60s
+      retries: 10
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+      - ./docker/es/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml
+
+volumes:
+  api-postgres:
+  catalog-postgres:
+  plausible-postgres:
+  plausible-clickhouse:
+  es-data:

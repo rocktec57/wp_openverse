@@ -1,39 +1,40 @@
 set dotenv-load := false
 
+COLOR := "\\033[0;31m"
+NO_COLOR := "\\033[0m"
+
 # Show all available recipes
 @_default:
-  echo "#######################"
-  echo "# Node.js automations #"
-  echo "#######################"
-  just --list --unsorted
+    printf "\n{{ COLOR }}# Node.js automations (path: \`automations/js/\`)\n"
+    printf "==============================================={{ NO_COLOR }}\n"
+    just --list --unsorted
 
+# Run a script
+[positional-arguments]
+run script *args:
+    #! /usr/bin/env bash
+    pnpm --filter automations exec node src/{{ script }} "${@:2}"
 
-# Install dependencies
-install:
-  pnpm install
+#################
+# Weekly report #
+#################
+
+# Generate and post the weekly report
+report:
+    just run last_week_tonight.mjs
 
 ##########
 # Render #
 ##########
 
-# Run `render-jinja.js` with given input file, output file and context
-render in_file out_file ctx="{}":
-    node src/render-jinja.js {{ in_file }} {{ out_file }} {{ ctx }}
+_render slug name:
+    just run render-jinja.js \
+        templates/release-drafter.yml.jinja \
+        .github/release-drafter-{{ slug }}.yml \
+        '{"app": "{{ name }}"}'
 
-# Render `.pre-commit-config.yaml`
-render-precommit:
-    just render templates/.pre-commit-config.local.yaml.jinja .pre-commit-config.yaml
-
-# Render `prettier.config.js`
-render-prettier:
-    just render templates/prettier.config.local.js.jinja prettier.config.js
-
-# Render GitHub issue & PR templates
-render-github:
-    just render templates/pull_request_template.md.jinja .github/PULL_REQUEST_TEMPLATE/pull_request_template.md
-
-# Render all templates (shortcut for easy iteration)
-render-templates:
-    just render-precommit
-    just render-prettier
-    just render-github
+render-release-drafter:
+    just _render api API
+    just _render ingestion_server "Ingestion Server"
+    just _render frontend Frontend
+    just _render catalog Catalog

@@ -1,0 +1,87 @@
+# This file is used by the `get-changes` action to determine the changesets.
+# Also see
+# - list of stacks: job `add-stack-label` of workflow `ci_cd.yml`
+# - list of stack labels: https://github.com/WordPress/openverse/labels?q=stack
+catalog:
+  - catalog/**
+  - docker/minio/**
+  - docker/upstream_db/**
+  - docker-compose.yml
+api:
+  - api/**
+  - packages/python/**
+  - docker/db/**
+  - docker/es/**
+  - docker/nginx/**
+  - docker-compose.yml
+  - load_sample_data.sh
+ingestion_server:
+  - ingestion_server/**
+  - docker/db/**
+  - docker/es/**
+  - docker/upstream_db/**
+  - docker-compose.yml
+  - load_sample_data.sh
+indexer_worker:
+  - indexer_worker/**
+  - docker/db/**
+  - docker/es/**
+  - docker/upstream_db/**
+  - docker-compose.yml
+  - load_sample_data.sh
+frontend:
+  - frontend/**
+  - packages/js/**
+  - package.json
+  - pnpm-lock.yaml
+  - pnpm-workspace.yaml
+  - tsconfig.base.json
+  - .npmrc
+  - .pnpmfile.cjs
+py_packages:
+  - packages/python/**
+js_packages:
+  - packages/js/**
+  - package.json
+  - pnpm-lock.yaml
+  - pnpm-workspace.yaml
+  - tsconfig.json
+  - .npmrc
+  - .pnpmfile.cjs
+analytics:
+  - docker/clickhouse/**
+  - docker/plausible/**
+  - docker/plausible_db/**
+  - docker-compose.yml
+  - setup_plausible.sh
+documentation:
+  - documentation/**
+  - frontend/**/*.mdx
+  - frontend/.storybook/**
+  - frontend/nuxt.config.ts
+  - frontend/tailwind.config.js
+  - frontend/src/styles/tailwind.css
+lint:
+  - prettier.config.js
+  - .editorconfig
+  - .eslintrc.js
+  - .eslintignore
+  - .prettierignore
+  - .pre-commit-config.yaml
+  - tsconfig.base.json
+  - .codespell
+  - .vale
+mgmt:
+  - .github/**
+  - .devcontainer/**
+  - automations/**
+  - utilities/**
+ci_cd:
+  - .github/actions/**
+  - .github/workflows/ci_cd.yml
+migrations:
+  - api/api/migrations/**
+project_proposal:
+  - documentation/projects/**/*project_proposal*
+project_ip:
+  - documentation/projects/**/*implementation_plan*

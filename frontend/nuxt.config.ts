@@ -1,0 +1,152 @@
+import { defineNuxtConfig } from "nuxt/config"
+
+import { disallowedBots } from "./shared/constants/disallowed-bots"
+import locales from "./i18n/data/valid-locales.json"
+
+import type { LocaleObject } from "@nuxtjs/i18n"
+
+export default defineNuxtConfig({
+  srcDir: "src/",
+  serverDir: "server/",
+  devServer: {
+    port: 8443,
+    host: "0.0.0.0",
+  },
+  devtools: { enabled: true },
+  imports: {
+    autoImport: false,
+  },
+  compatibilityDate: "2024-07-23",
+  css: ["~/assets/fonts.css", "~/styles/accent.css"],
+  /**
+   * Define available runtime configuration values and their defaults.
+   *
+   * See linked documentation for details, including how to override defaults
+   * with runtime values using environment variables.
+   *
+   * @see {@link https://nuxt.com/docs/api/nuxt-config#runtimeconfig-1}
+   */
+  runtimeConfig: {
+    apiClientId: "",
+    apiClientSecret: "",
+    public: {
+      deploymentEnv: "local",
+      apiUrl: "https://api.openverse.org/",
+      savedSearchCount: 4,
+      site: {
+        trailingSlash: false,
+      },
+      sentry: {
+        dsn: "",
+        environment: "local",
+      },
+      // Release is a build time variable. However, due to the way Sentry is set up, setting it in app.config.ts
+      // does not work, so we set it here using `process.env` to bake in the value at build time.
+      sentryRelease: process.env.SEMANTIC_VERSION,
+      plausible: {
+        ignoredHostnames: ["localhost", "staging.openverse.org"],
+        logIgnoredEvents: true,
+        apiHost: "http://localhost:50290",
+        domain: "localhost",
+      },
+    },
+  },
+  /**
+   * Disable debug mode to prevent excessive timing logs.
+   */
+  debug: false,
+  experimental: {
+    /**
+     * Improve router performance, see https://nuxt.com/blog/v3-10#%EF%B8%8F-build-time-route-metadata
+     */
+    scanPageMeta: true,
+  },
+  modules: [
+    "@pinia/nuxt",
+    "@nuxtjs/i18n",
+    "@nuxtjs/tailwindcss",
+    "@nuxtjs/plausible",
+    "@nuxtjs/storybook",
+    "@nuxt/test-utils/module",
+    "@nuxtjs/sitemap",
+    "@nuxtjs/robots",
+    "@sentry/nuxt/module",
+  ],
+  routeRules: {
+    "/photos/**": { redirect: { to: "/image/**", statusCode: 301 } },
+    "/meta-search": { redirect: { to: "/about", statusCode: 301 } },
+    "/external-sources": { redirect: { to: "/about", statusCode: 301 } },
+  },
+  /**
+   * Robots.txt rules are configured here via the \@nuxtjs/robots package.
+   * @see {@link https://nuxtseo.com/robots/guides/nuxt-config}
+   */
+  robots: {
+    disallow: [
+      // robots rules are prefixed-based, so there's no need to configure specific media type searches
+      "/search",
+      // Other routes have more complex requirements; we configure those with `useRobotsRule` as needed
+    ],
+    groups: [
+      ...disallowedBots.map((bot) => ({
+        userAgent: [bot],
+        disallow: ["/"], // block disallowed bots from all routes
+      })),
+    ],
+  },
+  tailwindcss: {
+    cssPath: "~/styles/tailwind.css",
+  },
+  i18n: {
+    locales: [
+      {
+        /* Nuxt i18n fields */
+
+        code: "en", // unique identifier for the locale in Vue i18n
+        dir: "ltr",
+        file: "en.json",
+        language: "en", // used for SEO purposes (html lang attribute)
+        isCatchallLocale: true, // the catchall locale for `en` locales
+
+        /* Custom fields */
+
+        name: "English",
+        nativeName: "English",
+      },
+      ...locales,
+    ].filter((l) => Boolean(l.language)) as LocaleObject[],
+    lazy: true,
+    langDir: "locales",
+    defaultLocale: "en",
+    /**
+     * `detectBrowserLanguage` must be false to prevent nuxt/i18n from automatically
+     * setting the locale based on headers or the client-side `navigator` object.
+     *
+     * More info about the Nuxt i18n:
+     *
+     * - [Browser language detection info](https://i18n.nuxtjs.org/docs/guide/browser-language-detection)
+     * */
+    detectBrowserLanguage: false,
+    trailingSlash: false,
+    vueI18n: "./vue-i18n",
+  },
+  sentry: {
+    sourceMapsUploadOptions: {
+      org: "openverse",
+      project: "openverse-frontend",
+      /**
+       * This token is only used in the CI to upload source maps to Sentry when building the production
+       * image of the frontend.
+       */
+      authToken: process.env.SENTRY_AUTH_TOKEN,
+    },
+    unstable_sentryBundlerPluginOptions: {
+      release: {
+        name: process.env.SEMANTIC_VERSION,
+      },
+    },
+  },
+  sourcemap: {
+    client: "hidden",
+  },
+})

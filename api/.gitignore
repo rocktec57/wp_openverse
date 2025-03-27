@@ -1,0 +1,24 @@
+# Django
+static/*
+*.log
+local_settings.py
+db.sqlite3
+
+# Sphinx
+build/
+docs/_build/
+
+# OpenAPI
+openapi.yaml
+openapi.json
+
+# Schemathesis
+.hypothesis
+
+# IPython (except startup scripts)
+.ipython/*
+!.ipython/profile_default/
+.ipython/profile_default/*
+!.ipython/profile_default/startup/
+.ipython/profile_default/startup/*
+!.ipython/profile_default/startup/*.py

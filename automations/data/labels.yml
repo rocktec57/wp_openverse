@@ -82,6 +82,29 @@ groups:
         description: Bug fix
         emoji: "🛠"
 
+  - name: stack
+    color: "006b75"
+    emoji: "🧱"
+    is_required: true
+    apply_all_available: true
+    labels:
+      - name: frontend
+        description: Related to the Nuxt frontend
+      - name: mgmt
+        description: Related to repo management and automations
+      - name: api
+        description: Related to the Django API
+      - name: catalog
+        description: Related to the catalog and Airflow DAGs
+      - name: analytics
+        description: Related to the analytics setup
+      - name: ingestion server
+        description: Related to the ingestion/data refresh server
+      - name: documentation
+        description: Related to Sphinx documentation
+      - name: infra
+        description: Related to the Terraform config and other infrastructure
+
   - name: tooling
     labels:
       - name: sentry
@@ -99,6 +122,9 @@ groups:
       - name: code
         description: Concerns the software code in the repository
         emoji: "💻"
+      - name: data
+        description: Concerns the data in our catalog and/or databases
+        emoji: "🗄️"
       - name: interface
         description: Concerns end-users' experience with the software
         emoji: "🕹"
@@ -127,39 +153,89 @@ groups:
     labels:
       # Programming languages
       - name: javascript
-        description: Requires familiarity with JavaScript
+        description: Involves JavaScript
         emoji: "🟨"
       - name: python
-        description: Requires familiarity with Python
+        description: Involves Python
         emoji: "🐍"
       - name: php
-        description: Requires familiarity with PHP
+        description: Involves PHP
         emoji: "🐘"
       # Libraries / other software
       - name: vue
-        description: Requires familiarity with Vue.js
+        description: Involves Vue.js
         emoji: "🔧"
       - name: django
-        description: Requires familiarity with Django
+        description: Involves Django
         emoji: "🔧"
       - name: airflow
-        description: Requires familiarity with Apache Airflow
+        description: Involves Apache Airflow
         emoji: "🔧"
       - name: docker
-        description: Requires familiarity with Docker
+        description: Involves Docker
         emoji: "🐳"
       - name: postgres
-        description: Requires familiarity with PostgreSQL
+        description: Involves PostgreSQL
         emoji: "💾"
       - name: css
-        description: Requires familiarity with CSS
+        description: Involves CSS
         emoji: "🎨"
       - name: bash
-        description: Requires familiarity with Bash
+        description: Involves Bash
         emoji: "💲"
       - name: typescript
-        description: Requires familiarity with TypeScript
+        description: Involves TypeScript
         emoji: "⌨️"
+      - name: pytest
+        description: Involves pytest
+        emoji: "🐍"
+      - name: vitest
+        description: Involves vitest
+        emoji: "🟨"
+      - name: playwright
+        description: Involves Playwright
+        emoji: "🔧"
+      - name: elasticsearch
+        description: Involves Elasticsearch
+        emoji: "🔧"
+      - name: redis
+        description: Involves Redis
+        emoji: "🔧"
+      - name: github actions
+        description: Involves Github Actions
+        emoji: "🔧"
+      - name: just
+        description: Involves Just.js
+        emoji: "🔧"
+
+  # Labels related to new source issues
+  - name: provider
+    emoji: "☁️"
+    color: "478d04"
+    labels:
+      - name: any
+        description: Replace with the actual provider type
+      - name: audio
+        description: Audio provider
+      - name: images
+        description: Image provider
+      - name: text
+        description: Text provider
+      - name: video
+        description: Video provider
+      - name: 3D models
+        description: 3D model provider
+
+  - name: project
+    color: "8b3dcd"
+    emoji: "🧭"
+    labels:
+      - name: thread
+        description: An issue used to track a project and its progress
+      - name: proposal
+        description: A proposal for a project
+      - name: implementation plan
+        description: An implementation plan for a project
 
   - name: friendliness
     color: "7f0799"

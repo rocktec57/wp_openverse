@@ -1,0 +1,117 @@
+set dotenv-load := false
+
+COLOR := "\\033[0;32m"
+NO_COLOR := "\\033[0m"
+
+# Show all available recipes
+@_default:
+    printf "\n{{ COLOR }}# Frontend (path: \`frontend/\`)\n"
+    printf "=============================={{ NO_COLOR }}\n"
+    just --list --unsorted
+
+
+###########
+# Version #
+###########
+
+export FRONTEND_NODE_VERSION := `grep 'node": ">= ' ../package.json | awk -F'>= ' '{print $2}' | awk -F'.' '{print $1}'`
+export FRONTEND_PNPM_VERSION := `grep 'packageManager' ../package.json | awk -F'@' '{print $2}' | sed 's/",//g'`
+
+# Print the Node.js version specified in `package.json`
+@node-version:
+    echo $FRONTEND_NODE_VERSION
+
+# Print the pnpm version specified in `package.json`
+@pnpm-version:
+    echo $FRONTEND_PNPM_VERSION
+
+##########
+# Docker #
+##########
+
+# This section exists because the frontend is not a part of the Docker-based setup
+# and cannot be built easily like `just dc build <service>`.
+
+# Build the frontend Docker image
+build-img tag="openverse-frontend:local" target="app":
+    docker build \
+      --load \
+      --target {{ target }} \
+      --build-context 'repo_root=..' \
+      --build-arg FRONTEND_NODE_VERSION=$(just node-version) \
+      --build-arg FRONTEND_PNPM_VERSION=$(just pnpm-version) \
+      --tag {{ tag }} \
+      .
+
+# Run the frontend Docker image
+run-img tag="openverse-frontend:local":
+    docker run \
+      --rm \
+      --publish 8443:8443 \
+      {{ tag }}
+
+######
+# Up #
+######
+
+# Bring up services specific to the frontend profile
+[positional-arguments]
+up *flags:
+    env COMPOSE_PROFILES="frontend" just ../up "$@"
+
+# Wait for all profile services to be up
+wait-up: up
+    just wait
+
+# Set up user and test site in Plausible
+init: wait-up
+    cd .. && ./setup_plausible.sh
+
+# Run a package.json script via pnpm
+[positional-arguments]
+run *args:
+    pnpm run "$@"
+
+# Generate the specified kind of documentation
+generate-docs doc="media-props" fail_on_diff="true":
+    #!/bin/bash
+    set -e
+    if [ "{{ doc }}" == "media-props" ]; then
+        FINAL_FILE="documentation/meta/media_properties/frontend.md"
+        NAME="Media properties"
+        just run doc:media-props
+        mv media_properties.md ../$FINAL_FILE
+    else
+        echo "Invalid documentation type specified, use \`media-props\`. Exiting."
+        exit 1
+    fi
+    echo -n "Running linting..."
+    just ../lint prettier $FINAL_FILE &>/dev/null || true
+    echo "Done!"
+    if {{ fail_on_diff }}; then
+      set +e
+      git diff --exit-code ../$FINAL_FILE
+      if [ $? -ne 0 ]; then
+          printf "\n\n\e[31m!! Changes found in $NAME documentation, please run 'just frontend/generate-docs {{ doc }}' locally and commit difference !!\n\n"
+          exit 1
+      fi
+    fi
+
+types:
+    cd .. && pnpm exec vue-tsc -p frontend --noEmit
+
+##########
+# Health #
+##########
+
+# Check the health of the service
+@plausible-health host="localhost:50288":
+    -curl -s 'http://localhost:50288/api/health' --fail | grep -v -c 'error'
+
+# Wait for the service to be healthy
+@wait host="localhost:50288":
+    # The just command on the second line is executed in the context of the
+    # parent directory and so must be prefixed with `frontend/`.
+    just ../_loop \
+    '"$(just frontend/plausible-health {{ host }})" != "1" ' \
+    "Waiting for Plausible to be healthy..."

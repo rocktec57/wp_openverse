@@ -1,0 +1,48 @@
+# Nuxt
+.nuxt
+.output
+
+# Storybook
+.nuxt-storybook
+storybook-static
+
+# Playwright creates these two folders
+test-results
+test/Default
+
+# Coverage
+test/unit/coverage/
+coverage
+
+# Generated translation files
+*.pot
+
+# Downloaded translation files
+i18n/locales/openverse.zip
+i18n/locales/*.json
+i18n/locales/scripts/valid-locales.json
+i18n/locales/scripts/untranslated-locales.json
+i18n/locales/scripts/invalid-locales.json
+i18n/locales/scripts/wp-locales.json
+i18n/data/valid-locales.json
+i18n/data/untranslated-locales.json
+i18n/locales/scripts/*.json
+# The old downloaded translation files. Can be deleted after the i18n folder changes are merged
+src/locales/openverse.zip
+src/locales/*.json
+src/locales/scripts/valid-locales.json
+src/locales/scripts/untranslated-locales.json
+src/locales/scripts/invalid-locales.json
+src/locales/scripts/wp-locales.json
+
+# Workspace mock-files
+/.npmrc
+/.pnpmfile.cjs
+/pnpm-lock.yaml
+
+# To prevent accidentally adding a hardcoded robots.txt, see
+# /src/server-middleware/robots.js for the robots.txt file.
+src/static/robots.txt
+
+# Sentry Config File
+.env.sentry-build-plugin

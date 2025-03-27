@@ -1,4 +1,6 @@
-<img src="brand/banner.svg" width="100%"/>
+<a href="https://openverse.org">
+  <img src="documentation/meta/brand/banner.svg" width="100%" alt="Visit Openverse.org"/>
+</a>
 
 <p align="center">
   <a href="https://github.com/orgs/WordPress/projects/3">Project Board</a> |
@@ -19,11 +21,8 @@
 Openverse is a powerful search engine for GPL-compatible images, audio, and
 more. Openverse is live at [openverse.org](https://openverse.org).
 
-This repository contains most of the codebase, except for the Openverse catalog.
-Eventually the catalog will be merged into this repository as well.
-
-- [Catalog](https://github.com/wordpress/openverse-catalog) | The Apache
-  Airflow-powered system for downloading and storing Openverse's metadata
+- [Catalog](catalog/) | The Apache Airflow-powered system for downloading and
+  storing Openverse's metadata
 - [Ingestion server](ingestion_server/) | The mechanism for refreshing the data
   from the catalog to the API
 - [API](api/) | The Django REST API for querying the database, used by the
@@ -32,15 +31,36 @@ Eventually the catalog will be merged into this repository as well.
   [openverse.org](https://openverse.org), built with Vue and Nuxt
 - [Automations](automations/) | Scripts used for various workflows around
   Openverse repositories and processes
+- [Utilities](utilities/) | Scripts or utilities which are useful across
+  multiple projects or don't necessarily fit into a specific project.
 
 This repository also contains the following directories.
 
 - [Brand](brand/) | Brand assets for Openverse such as logo and icon and
   guidelines for using these assets
-- [RFCs](rfcs/) | Proposals and planning documents for discussing changes to
-  Openverse
-- [Templates](templates/) | Common scaffolding code that is rendered and synced
-  to the catalog repo
+- [Templates](templates/) | Jinja templates that can be rendered into common
+  scaffolding code for the project
+
+## Keep in touch
+
+You can keep in touch with the project via the following channels:
+
+- GitHub
+  - [Issues](https://github.com/WordPress/openverse/issues/)
+  - [PRs](https://github.com/WordPress/openverse/pulls/)
+  - [Discussions](https://github.com/WordPress/openverse/discussions/)
+  - [Project Board](https://github.com/orgs/WordPress/projects/3)
+- [Community Site](https://make.wordpress.org/openverse/)
+- #openverse channel in the
+  [Making WordPress Chat](https://make.wordpress.org/chat/)
+  - Weekly Development Chat (
+    [Mondays @ 15:00 UTC](https://everytimezone.com/s/d2e71015))
+  - Monthly Prioritisation Meeting (first Wednesday of every month @ 15:00 UTC)
+
+## Documentation
+
+To use the Openverse API, please refer to the
+[API consumer documentation](https://api.openverse.org/v1/).
 
 ## Contributing
 
@@ -55,7 +75,9 @@ You are welcome to take any open issue in the tracker labelled
 contribution as well, but may be less accessible or well-defined in comparison
 to those that are explicitly labelled.
 
-See the [`CONTRIBUTING.md`](CONTRIBUTING.md) file for details.
+See the
+[contribution guide](https://docs.openverse.org/general/contributing.html) for
+details.
 
 ## Acknowledgments
 
@@ -66,3 +88,7 @@ previous team members @ryanmerkley, @janetpkr, @lizadaly, @sebworks, @pa-w,
 @kgodey, @annatuma, @mathemancer, @aldenstpage, @brenoferreira, and @sclachar,
 along with their
 [community of volunteers](https://opensource.creativecommons.org/community/community-team/).
+
+We would also like to thank our former maintainers @AetherUnbound,
+@sarayourfriend, @stacimc and @zackkrida for their invaluable contributions to
+Openverse, which have shaped the project and made it what it is today.

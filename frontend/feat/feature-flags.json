@@ -1,0 +1,50 @@
+{
+  "features": {
+    "fake_sensitive": {
+      "status": {
+        "staging": "switchable",
+        "production": "disabled"
+      },
+      "description": "Mark 50% of results as sensitive to test content safety.",
+      "defaultState": "off",
+      "storage": "cookie"
+    },
+    "additional_search_types": {
+      "status": {
+        "staging": "switchable",
+        "production": "disabled"
+      },
+      "description": "Toggle additional search types in the content switcher.",
+      "defaultState": "off",
+      "storage": "cookie"
+    },
+    "analytics": {
+      "status": "switchable",
+      "defaultState": "on",
+      "description": "Record custom events and page views.",
+      "storage": "cookie"
+    },
+    "fetch_sensitive": {
+      "status": "switchable",
+      "defaultState": "off",
+      "description": "Show results marked as sensitive in the results area.",
+      "supportsQuery": false,
+      "storage": "session"
+    },
+    "dark_mode_ui_toggle": {
+      "status": {
+        "staging": "switchable",
+        "production": "enabled"
+      },
+      "defaultState": "on",
+      "description": "Display the UI toggle to change the site color theme and respect system preferences.",
+      "storage": "cookie"
+    }
+  },
+  "groups": [
+    {
+      "title": "analytics",
+      "features": ["analytics"]
+    }
+  ]
+}

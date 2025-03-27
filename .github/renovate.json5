@@ -1,0 +1,88 @@
+{
+  // WordPress/openverse specific configuration goes in this file
+  // See .github/global-renovate.json5 for configuration of the Renovate application itself
+
+  // pnpmfile.cjs required for lock file updates (including checksum), and so must not be ignored
+  ignoreScripts: false,
+  packageRules: [
+    {
+      groupName: "workflows",
+      matchFileNames: [
+        ".github/{actions,workflows}/**",
+        "automations/**",
+        ".pre-commit-config.yaml",
+      ],
+      matchManagers: ["pre-commit", "github-actions"],
+      addLabels: ["🧱 stack: mgmt"],
+    },
+    {
+      matchFileNames: ["{frontend,packages/js}/**"],
+      addLabels: ["🧱 stack: frontend"],
+    },
+    {
+      matchFileNames: ["{api,packages/python}/**"],
+      addLabels: ["🧱 stack: api"],
+    },
+    {
+      matchFileNames: ["ingestion_server/**"],
+      addLabels: ["🧱 stack: ingestion server"],
+    },
+    {
+      matchFileNames: ["catalog/**", "indexer_worker/**"],
+      addLabels: ["🧱 stack: catalog"],
+    },
+    {
+      matchFileNames: ["documentation/**"],
+      addLabels: ["🧱 stack: documentation"],
+    },
+    {
+      matchFileNames: ["docker/dev_env/**"],
+      addLabels: ["🧱 stack: mgmt"],
+    },
+    {
+      groupName: "python dev dependencies",
+      matchDepTypes: [
+        "tool.pdm.dev-dependencies",
+        "project.optional-dependencies",
+      ],
+      matchFileNames: [
+        "api/**",
+        "catalog/**",
+        "ingestion_server/**",
+        "indexer_worker/**",
+        "documentation/**",
+        "packages/python/openverse-attribution/**",
+      ],
+    },
+    {
+      groupName: "@openverse/eslint-plugin",
+      matchFileNames: ["packages/js/eslint-plugin/**"],
+    },
+    {
+      groupName: "tailwind",
+      matchPackageNames: ["/tailwindcss/"],
+    },
+    {
+      groupName: "@testing-library",
+      matchPackageNames: ["@testing-library{/,}**"],
+    },
+    {
+      groupName: "typescript",
+      matchPackageNames: [
+        "typescript",
+        "vue-tsc",
+        "@typescript-eslint{/,}**",
+        "typescript-eslint",
+      ],
+    },
+    {
+      groupName: "i18n",
+      matchPackageNames: ["vue-i18n", "@nuxtjs/i18n", "@intlify{/,}**"],
+    },
+    {
+      matchPackageNames: ["/elasticsearch/", "/postgres/", "/redis/"],
+      matchManagers: ["docker-compose", "dockerfile"],
+      enabled: false,
+    },
+  ],
+}

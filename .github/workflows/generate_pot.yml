@@ -1,0 +1,53 @@
+name: Generate POT file
+
+on:
+  push:
+    # The workflow will only run when both filters are satisfied.
+    paths:
+      - frontend/i18n/data/en.json5
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  generate-pot:
+    name: Generate POT file
+    runs-on: ubuntu-latest
+    # Prevent running this workflow on forks, it's unnecessary for external contributors
+    if: github.repository_owner == 'WordPress'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup CI env
+        uses: ./.github/actions/setup-env
+        with:
+          setup_python: false
+          install_recipe: node-install
+
+      - name: Generate PO
+        run: just frontend/run i18n:generate-pot
+
+      - name: Copy to root
+        run: cp frontend/openverse.pot /tmp/openverse.pot
+
+      - name: Checkout repository at `translations` branch
+        uses: actions/checkout@v4
+        with:
+          ref: translations
+
+      - name: Update POT on `translations` branch
+        run: |
+          rm openverse.pot
+          cp /tmp/openverse.pot openverse.pot
+          git config --global user.name 'POT Updater'
+          git config --global user.email 'openverse@wordpress.org'
+          git commit --no-verify -am 'Update POT file'
+          git push --no-verify
+
+      - name: Checkout repository # again, to enable cleaning.
+        if: always()
+        uses: actions/checkout@v4

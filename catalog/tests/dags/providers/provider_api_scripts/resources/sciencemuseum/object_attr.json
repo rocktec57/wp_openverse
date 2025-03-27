@@ -1,0 +1,330 @@
+{
+  "@admin": {
+    "processed": 1712780277089,
+    "sequence": 14504859,
+    "uid": "co82669",
+    "added": 1699636365980,
+    "stream": "collections-online",
+    "id": "object-82669",
+    "source": "Mimsy XG",
+    "uuid": "8ea951d4-6057-3f09-a5b6-3018e9d19010"
+  },
+  "category": [
+    {
+      "museum": "SCM",
+      "name": "Classical & Medieval Medicine",
+      "type": "category1",
+      "value": "SCM - Classical & Medieval Medicine"
+    }
+  ],
+  "creation": {
+    "date": [
+      {
+        "source": "catalogue",
+        "value": "200 BCE-200 CE",
+        "primary": true
+      },
+      {
+        "role": [
+          {
+            "value": "made"
+          }
+        ],
+        "from": "-200",
+        "to": "200",
+        "value": "200 BCE-200 CE"
+      }
+    ],
+    "@entity": "lifecycle"
+  },
+  "cumulation": {
+    "collector": [
+      {
+        "summary": {
+          "title": "Sir Henry Wellcome's Museum Collection"
+        },
+        "@link": {
+          "source": "catalogue"
+        },
+        "name": [
+          {
+            "value": "Sir Henry Wellcome's Museum Collection"
+          }
+        ],
+        "@entity": "literal"
+      }
+    ],
+    "@entity": "lifecycle"
+  },
+  "description": [
+    {
+      "type": "catalogue description",
+      "value": "Small bronze amulet, possibly phallic, or stomach, probably Roman, from Italy, 200BC-200AD",
+      "primary": true
+    },
+    {
+      "type": "accession register",
+      "value": "Small bronze amulet, possibly phallic, or stomach, in display box with others, probably Roman, from Italy, 200BC-200"
+    },
+    {
+      "date": [
+        {
+          "from": "2017",
+          "to": "2017",
+          "value": "2017-03-01",
+          "primary": true
+        }
+      ],
+      "type": "description",
+      "value": "Small bronze amulet, possibly phallic, or stomach, in display box with others, probably Roman, from Italy, 200BC-200AD"
+    },
+    {
+      "type": "description",
+      "value": "Small bronze amulet, possibly phallic, or stomach, probably Roman, from Italy, 200BC-200AD"
+    }
+  ],
+  "identifier": [
+    {
+      "type": "accession number",
+      "value": "A67864",
+      "primary": true
+    }
+  ],
+  "language": [
+    {
+      "value": "eng"
+    }
+  ],
+  "legal": {
+    "credit": "Arte Antica e Moderna"
+  },
+  "measurements": {
+    "count": "1",
+    "dimensions": [
+      {
+        "type": "catalogue dimensions",
+        "value": "height 23 mm; base: diameter 13 mm",
+        "primary": true
+      },
+      {
+        "units": "mm",
+        "value": "23"
+      }
+    ]
+  },
+  "multimedia": [
+    {
+      "@admin": {
+        "uid": "i375945",
+        "id": "media-375945",
+        "source": "smgi",
+        "uuid": "8f17b63a-a5dc-3d9a-b903-542c0fb0e6d7"
+      },
+      "@processed": {
+        "large": {
+          "resizable": true,
+          "@type": "image",
+          "format": "jpeg",
+          "modified": 1697179492000,
+          "location": "375/945/large_smg00241807.jpg",
+          "measurements": {
+            "filesize": {
+              "units": "bytes",
+              "value": 40488
+            },
+            "dimensions": [
+              {
+                "units": "pixels",
+                "dimension": "height",
+                "value": 1536
+              },
+              {
+                "units": "pixels",
+                "dimension": "width",
+                "value": 1527
+              }
+            ]
+          }
+        },
+        "small_thumbnail": {
+          "resizable": true,
+          "@type": "image",
+          "format": "jpeg",
+          "modified": 1697179492000,
+          "location": "375/945/small_thumbnail_smg00241807.jpg",
+          "measurements": {
+            "filesize": {
+              "units": "bytes",
+              "value": 6917
+            },
+            "dimensions": [
+              {
+                "units": "pixels",
+                "dimension": "height",
+                "value": 48
+              },
+              {
+                "units": "pixels",
+                "dimension": "width",
+                "value": 48
+              }
+            ]
+          }
+        },
+        "zoom": {
+          "resizable": true,
+          "@type": "image",
+          "format": "pyramid tiff",
+          "modified": 1697179492000,
+          "location": "375/945/Small_bronze_amulet__possibly_phallic__or_stomach.ptif",
+          "measurements": {
+            "filesize": {
+              "units": "bytes",
+              "value": 16783656
+            },
+            "dimensions": [
+              {
+                "units": "pixels",
+                "dimension": "height",
+                "value": 3530
+              },
+              {
+                "units": "pixels",
+                "dimension": "width",
+                "value": 3509
+              }
+            ]
+          }
+        },
+        "medium": {
+          "resizable": true,
+          "@type": "image",
+          "format": "jpeg",
+          "modified": 1697179492000,
+          "location": "375/945/medium_smg00241807.jpg",
+          "measurements": {
+            "filesize": {
+              "units": "bytes",
+              "value": 12269
+            },
+            "dimensions": [
+              {
+                "units": "pixels",
+                "dimension": "height",
+                "value": 579
+              },
+              {
+                "units": "pixels",
+                "dimension": "width",
+                "value": 576
+              }
+            ]
+          }
+        },
+        "large_thumbnail": {
+          "resizable": true,
+          "@type": "image",
+          "format": "jpeg",
+          "modified": 1697179492000,
+          "location": "https://coimages.sciencemuseumgroup.org.uk/375/945/large_thumbnail_smg00241807.jpg",
+          "measurements": {
+            "filesize": {
+              "units": "bytes",
+              "value": 8777
+            },
+            "dimensions": [
+              {
+                "units": "pixels",
+                "dimension": "height",
+                "value": 322
+              },
+              {
+                "units": "pixels",
+                "dimension": "width",
+                "value": 320
+              }
+            ]
+          }
+        },
+        "medium_thumbnail": {
+          "resizable": true,
+          "@type": "image",
+          "format": "jpeg",
+          "modified": 1697179492000,
+          "location": "375/945/medium_thumbnail_smg00241807.jpg",
+          "measurements": {
+            "filesize": {
+              "units": "bytes",
+              "value": 7694
+            },
+            "dimensions": [
+              {
+                "units": "pixels",
+                "dimension": "height",
+                "value": 193
+              },
+              {
+                "units": "pixels",
+                "dimension": "width",
+                "value": 192
+              }
+            ]
+          }
+        }
+      },
+      "@type": "image",
+      "upload_sort": "25/05/2019",
+      "legal": {
+        "rights": [
+          {
+            "licence": "CC BY-NC-SA 4.0",
+            "copyright": "© The Board of Trustees of the Science Museum"
+          }
+        ]
+      },
+      "credit": {
+        "value": "Science Museum Group"
+      },
+      "title": [
+        {
+          "type": "caption",
+          "value": "Small bronze amulet, possibly phallic, or stomach"
+        }
+      ],
+      "@entity": "reference"
+    }
+  ],
+  "name": [
+    {
+      "type": "catalogue name",
+      "value": "amulet",
+      "primary": true
+    },
+    {
+      "type": "object name",
+      "value": "amulet"
+    }
+  ],
+  "summary": {
+    "title": "Small bronze amulet (amulet)"
+  },
+  "title": [
+    {
+      "type": "catalogue title",
+      "value": "Small bronze amulet",
+      "primary": true
+    },
+    {
+      "type": "display title",
+      "value": "Small bronze amulet, possibly phallic, or stomach,"
+    },
+    {
+      "type": "display title",
+      "value": "Small bronze amulet, possibly phallic, or stomach"
+    },
+    {
+      "type": "display title",
+      "value": "Small bronze amulet"
+    }
+  ]
+}

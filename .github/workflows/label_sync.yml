@@ -6,31 +6,20 @@ on:
   schedule:
     - cron: "0 0 * * *" # at 00:00
 
-env:
-  LOGGING_LEVEL: 20 # corresponds to INFO
-  ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
-
 jobs:
   sync_labels:
     name: Sync labels
     runs-on: ubuntu-latest
+    # Prevent running this workflow on forks, it's unnecessary for external contributors
+    if: github.repository_owner == 'WordPress'
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v4
+      - name: Sync labels from monorepo to infra
+        uses: actions/github-script@v7
         with:
-          python-version: "3.10"
-
-      - name: Install dependencies
-        working-directory: ./automations/python
-        run: |
-          python -m pip install --user --upgrade pip
-          python -m pip install --user pipenv
-          pipenv install --deploy
-
-      - name: Sync standard labels
-        working-directory: ./automations/python
-        run: |
-          pipenv run python sync_labels.py
+          github-token: ${{ secrets.ACCESS_TOKEN }}
+          script: |
+            const { main } = await import('${{ github.workspace }}/automations/js/src/sync_labels.mjs')
+            await main(github, core)

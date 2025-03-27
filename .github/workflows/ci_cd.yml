@@ -1,0 +1,1462 @@
+name: CI + CD
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "The tag to assign to the images built in the workflow."
+        type: string
+        required: false
+        default: ""
+      # This is useful when dispatching on a branch other than `main`.
+      perform_deploy:
+        description: "Publish images and deploy staging?"
+        type: boolean
+        required: false
+        default: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # Don't continue building images for a PR if the PR is updated quickly
+  # For other workflows, allow them to complete and just block on them. This
+  # ensures deployments in particular to happen in series rather than parallel.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  ###########
+  # Helpers #
+  ###########
+
+  get-changes:
+    name: Get changes
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      changes: ${{ steps.paths-filter.outputs.changes }}
+      catalog: ${{ contains(fromJson(steps.paths-filter.outputs.changes), 'catalog') }}
+      ingestion_server: ${{ contains(fromJson(steps.paths-filter.outputs.changes), 'ingestion_server') }}
+      indexer_worker: ${{ contains(fromJson(steps.paths-filter.outputs.changes), 'indexer_worker') }}
+      api: ${{ contains(fromJson(steps.paths-filter.outputs.changes), 'api') }}
+      frontend: ${{ contains(fromJson(steps.paths-filter.outputs.changes), 'frontend') }}
+      documentation: ${{ contains(fromJson(steps.paths-filter.outputs.changes), 'documentation') }}
+      ci_cd: ${{ contains(fromJson(steps.paths-filter.outputs.changes), 'ci_cd') }}
+      py_packages: ${{ contains(fromJson(steps.paths-filter.outputs.changes), 'py_packages') }}
+      js_packages: ${{ contains(fromJson(steps.paths-filter.outputs.changes), 'js_packages') }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get changes
+        id: paths-filter
+        uses: ./.github/actions/get-changes
+
+  get-image-tag:
+    name: Get image tag
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.get-image-tag.outputs.image_tag }}
+
+    steps:
+      - name: Get image tag
+        id: get-image-tag
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.image_tag }}" != "" ]]; then
+              echo "image_tag=${{ inputs.image_tag }}" | tee "$GITHUB_OUTPUT"
+          else
+              echo "image_tag=${{ github.sha }}" | tee "$GITHUB_OUTPUT"
+          fi
+
+  determine-images:
+    name: Determine images to build and publish
+    runs-on: ubuntu-latest
+    outputs:
+      do_build: ${{ steps.set-matrix.outputs.do_build }}
+      build_matrix: ${{ steps.set-matrix.outputs.build_matrix }}
+      do_publish: ${{ steps.set-matrix.outputs.do_publish }}
+      publish_matrix: ${{ steps.set-matrix.outputs.publish_matrix }}
+    needs:
+      - get-changes
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set matrix images
+        id: set-matrix
+        env:
+          CHANGES: ${{ needs.get-changes.outputs.changes }}
+          PYTHONPATH: ${{ github.workspace }}/automations/python
+        working-directory: automations/python/workflows
+        run: python set_matrix_images.py
+
+  #############
+  # Universal #
+  #############
+
+  lint: # This includes type-checking of the frontend.
+    name: Lint files
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup CI env
+        uses: ./.github/actions/setup-env
+        with:
+          # PDM is needed to run Vale
+          setup_python: "true"
+          # Node.js is needed by lint actions.
+          install_recipe: "node-install"
+
+      - name: Cache pre-commit envs
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pre-commit
+          key: ${{ runner.os }}-pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
+
+      - name: Run pre-commit to lint files
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          just precommit
+          just lint
+
+  validate-codeowners:
+    name: Validate CODEOWNERS
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - uses: mszostok/codeowners-validator@v0.7.4
+        with:
+          checks: "files,duppatterns,syntax"
+          experimental_checks: "notowned,avoid-shadowing"
+
+  build-images:
+    name: Build Docker images
+    if: needs.determine-images.outputs.do_build == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.determine-images.outputs.build_matrix) }}
+    needs:
+      - get-image-tag
+      - lint
+      - determine-images
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Sets up `just` and Node.js.
+      # Node.js is needed for the frontend to download translations.
+      # `just` is needed to run the recipes and set build args.
+      - name: Setup CI env
+        uses: ./.github/actions/setup-env
+        with:
+          setup_python: false
+          setup_nodejs: ${{ matrix.image == 'frontend' && 'true' || 'false' }}
+          install_recipe: ${{ matrix.image == 'frontend' && 'node-install' || '' }}
+          locales: ${{ matrix.image == 'frontend' && 'production' || '' }}
+
+      # Sets build args specifying versions needed to build Docker image.
+      - name: Prepare build args
+        id: prepare-build-args
+        run: |
+          just versions | tee "$GITHUB_OUTPUT"
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          install: true
+
+      - name: Build image `${{ matrix.image }}`
+        uses: docker/build-push-action@v6
+        with:
+          # The Sentry auth token is only set for the production release of the frontend (on push to main or manual release).
+          secrets: |
+            ${{ matrix.image == 'frontend' && ((github.event_name == 'push' && github.repository == 'WordPress/openverse') || (github.event_name == 'workflow_dispatch' && inputs.perform_deploy)) && format('sentry_auth_token={0}', secrets.SENTRY_AUTH_TOKEN) || '' }}
+          context: ${{ matrix.context }}
+          target: ${{ matrix.target }}
+          push: false
+          tags: openverse-${{ matrix.image }}
+          file: ${{ matrix.file }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,scope=${{ matrix.image }}
+          outputs: type=docker,dest=/tmp/${{ matrix.image }}.tar
+          build-contexts: ${{ matrix.build-contexts }}
+          build-args: |
+            SEMANTIC_VERSION=${{ needs.get-image-tag.outputs.image_tag }}
+            OV_PDM_VERSION=${{ steps.prepare-build-args.outputs.ov_pdm_version }}
+            CATALOG_PY_VERSION=${{ steps.prepare-build-args.outputs.catalog_py_version }}
+            CATALOG_AIRFLOW_VERSION=${{ steps.prepare-build-args.outputs.catalog_airflow_version }}
+            INDEXER_WORKER_PY_VERSION=${{ steps.prepare-build-args.outputs.indexer_worker_py_version }}
+            API_PY_VERSION=${{ steps.prepare-build-args.outputs.api_py_version }}
+            INGESTION_PY_VERSION=${{ steps.prepare-build-args.outputs.ingestion_py_version }}
+            FRONTEND_NODE_VERSION=${{ steps.prepare-build-args.outputs.frontend_node_version }}
+            FRONTEND_PNPM_VERSION=${{ steps.prepare-build-args.outputs.frontend_pnpm_version }}
+            PGCLI_VERSION=${{ steps.prepare-build-args.outputs.pgcli_version }}
+            ${{ matrix.build-args || '' }}
+
+      - name: Upload image `${{ matrix.image }}`
+        id: upload-img
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.image }}
+          path: /tmp/${{ matrix.image }}.tar
+
+      - name: Show artifact ID
+        run: |
+          echo '${{ matrix.image }} artifact ID is ${{ steps.upload-img.outputs.artifact-id }}'
+
+  ###########
+  # Catalog #
+  ###########
+
+  test-cat:
+    name: Run tests for the catalog
+    if: |
+      needs.get-changes.outputs.catalog == 'true' ||
+      needs.get-changes.outputs.ci_cd == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs:
+      - get-changes
+      - build-images
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup CI env
+        uses: ./.github/actions/setup-env
+        with:
+          setup_python: false
+          # Python is not needed to run the tests.
+          setup_nodejs: false
+          # Node.js is not needed to run the tests.
+          install_recipe: ""
+
+      - name: Load Docker images
+        uses: ./.github/actions/load-img
+        with:
+          run_id: ${{ github.run_id }}
+          setup_images: upstream_db
+
+      # Sets build args specifying versions needed to build Docker image.
+      - name: Prepare build args
+        id: prepare-build-args
+        run: |
+          just versions | tee "$GITHUB_OUTPUT"
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          install: true
+
+      - name: Build catalog dev image
+        uses: docker/build-push-action@v6
+        with:
+          context: catalog
+          target: cat
+          push: false
+          load: true
+          tags: openverse-catalog
+          cache-from: type=gha,scope=catalog_dev
+          cache-to: type=gha,scope=catalog_dev
+          build-args: |
+            CATALOG_PY_VERSION=${{ steps.prepare-build-args.outputs.catalog_py_version }}
+            CATALOG_AIRFLOW_VERSION=${{ steps.prepare-build-args.outputs.catalog_airflow_version }}
+            REQUIREMENTS_FILE=requirements-dev.txt
+
+      - name: Run tests
+        run: |
+          just catalog/test --extended
+
+  catalog-checks:
+    name: Run catalog checks
+    if: |
+      needs.get-changes.outputs.catalog == 'true' ||
+      needs.get-changes.outputs.ci_cd == 'true'
+    runs-on: ubuntu-latest
+    needs:
+      - get-changes
+      - build-images
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup CI env
+        uses: ./.github/actions/setup-env
+        with:
+          setup_python: true
+          # Node.js is not needed to run the tests.
+          setup_nodejs: false
+          install_recipe: ""
+
+      - name: Load Docker images
+        uses: ./.github/actions/load-img
+        with:
+          run_id: ${{ github.run_id }}
+          setup_images: upstream_db catalog
+
+      - name: Check generated documentation
+        run: |
+          just catalog/generate-docs dag true
+          just catalog/generate-docs media-props true
+
+  ##################
+  # Indexer worker #
+  ##################
+
+  test-indexer-worker:
+    name: Run tests for indexer worker
+    if: |
+      needs.get-changes.outputs.indexer_worker == 'true' ||
+      needs.get-changes.outputs.ci_cd == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs:
+      - get-changes
+      - build-images
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup CI env
+        uses: ./.github/actions/setup-env
+        with:
+          setup_python: false
+          # Python is not needed to run the tests.
+          setup_nodejs: false
+          # Node.js is not needed to run the tests.
+          install_recipe: ""
+
+      - name: Load Docker images
+        uses: ./.github/actions/load-img
+        with:
+          run_id: ${{ github.run_id }}
+          setup_images: upstream_db
+
+      # Sets build args specifying versions needed to build Docker image.
+      - name: Prepare build args
+        id: prepare-build-args
+        run: |
+          just versions | tee "$GITHUB_OUTPUT"
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          install: true
+
+      - name: Build indexer worker dev image
+        uses: docker/build-push-action@v6
+        with:
+          context: indexer_worker
+          target: indexer_worker
+          push: false
+          load: true
+          tags: openverse-catalog_indexer_worker
+          cache-from: type=gha,scope=indexer_worker_dev
+          cache-to: type=gha,scope=indexer_worker_dev
+          build-args: |
+            INDEXER_WORKER_PY_VERSION=${{ steps.prepare-build-args.outputs.indexer_worker_py_version }}
+            OV_PDM_VERSION=${{ steps.prepare-build-args.outputs.ov_pdm_version }}
+            PDM_INSTALL_ARGS=--dev
+
+      - name: Run tests
+        run: |
+          just indexer_worker/test
+
+  ####################
+  # Ingestion server #
+  ####################
+
+  test-ing:
+    name: Run tests for ingestion-server
+    if: |
+      needs.get-changes.outputs.ingestion_server == 'true' ||
+      needs.get-changes.outputs.ci_cd == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs:
+      - get-changes
+      - build-images
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup CI env
+        uses: ./.github/actions/setup-env
+        with:
+          # Python is needed to run the test.
+          setup_nodejs: false
+          # Node.js is not needed to run ingestion server tests.
+          install_recipe: ingestion_server/install
+
+      - name: Load Docker images
+        uses: ./.github/actions/load-img
+        with:
+          run_id: ${{ github.run_id }}
+          setup_images: upstream_db ingestion_server
+
+      - name: Run ingestion-server tests
+        run: |
+          just env
+          just ingestion_server/test-local
+
+      - name: Print ingestion-server test logs
+        run: |
+          just ingestion_server/test-logs > ingestion_server/test/ingestion_logs.txt
+          cat ingestion_server/test/ingestion_logs.txt
+
+      - name: Upload ingestion test logs
+        if: success() || failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ing_logs
+          path: ingestion_server/test/ingestion_logs.txt
+
+  #######
+  # API #
+  #######
+
+  test-api:
+    name: Run tests for the API
+    if: |
+      needs.get-changes.outputs.ingestion_server == 'true' ||
+      needs.get-changes.outputs.api == 'true' ||
+      needs.get-changes.outputs.ci_cd == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs:
+      - get-changes
+      - build-images
+      - get-image-tag
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup CI env
+        uses: ./.github/actions/setup-env
+        with:
+          setup_python: false
+          # Python is not needed to run the tests.
+          setup_nodejs: false
+          # Node.js is not needed to run API tests.
+          install_recipe: ""
+
+      - name: Load Docker images
+        uses: ./.github/actions/load-img
+        with:
+          run_id: ${{ github.run_id }}
+          setup_images: upstream_db ingestion_server catalog
+
+      # Sets build args specifying versions needed to build Docker image.
+      - name: Prepare build args
+        id: prepare-build-args
+        run: |
+          just versions | tee "$GITHUB_OUTPUT"
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          install: true
+
+      - name: Build API dev image
+        uses: docker/build-push-action@v6
+        with:
+          context: api
+          target: api
+          push: false
+          load: true
+          tags: openverse-api
+          cache-from: type=gha,scope=api_dev
+          cache-to: type=gha,scope=api_dev
+          build-contexts: packages=./packages/python
+          build-args: |
+            SEMANTIC_VERSION=${{ needs.get-image-tag.outputs.image_tag }}
+            API_PY_VERSION=${{ steps.prepare-build-args.outputs.api_py_version }}
+            OV_PDM_VERSION=${{ steps.prepare-build-args.outputs.ov_pdm_version }}
+            PDM_INSTALL_ARGS=--dev
+
+      - name: Start Catalog
+        run: just catalog/up
+
+      - name: Start API, ingest and index test data
+        run: just api/init
+
+      - name: Run API tests
+        run: just api/test-ci
+
+      - name: Print API test logs
+        if: success() || failure()
+        run: |
+          just logs > api_logs
+          cat api_logs
+
+      - name: Upload API test logs
+        if: success() || failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api_logs
+          path: api_logs
+
+  django-checks:
+    name: Run Django checks
+    if: |
+      needs.get-changes.outputs.api == 'true' ||
+      needs.get-changes.outputs.ci_cd == 'true'
+    runs-on: ubuntu-latest
+    needs:
+      - get-changes
+      - build-images
+    strategy:
+      fail-fast: false
+      matrix:
+        name:
+          - check_django
+          - validate_openapi
+          - check_migrations
+          - test_doc
+          - test_media_props
+        include:
+          - name: check_django
+            recipe: api/dj check
+          - name: validate_openapi
+            recipe: api/dj spectacular --format openapi-json --validate --file openapi.json
+          - name: check_migrations
+            recipe: api/dj makemigrations --check
+          - name: test_doc
+            recipe: api/doc-test
+          - name: test_media_props
+            recipe: api/generate-docs
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup CI env
+        uses: ./.github/actions/setup-env
+        with:
+          setup_python: false
+          # Python is not needed to run the tests.
+          setup_nodejs: false
+          # Node.js is not needed to run API tests.
+          install_recipe: ""
+
+      - name: Load Docker images
+        uses: ./.github/actions/load-img
+        with:
+          run_id: ${{ github.run_id }}
+          setup_images: upstream_db ingestion_server api
+
+      - name: Run check recipe
+        run: just ${{ matrix.recipe }}
+        env:
+          DC_USER: root
+
+      - name: Upload schema
+        if: matrix.name == 'test_doc'
+        uses: actions/upload-artifact@v4
+        with:
+          name: openapi.json
+          path: ./api/openapi.json
+
+  # This job runs when `django-checks` doesn't and always passes, thus allowing
+  # PRs to meet the required checks criteria and be merged.
+  bypass-django-checks:
+    name: Run Django checks
+    if: |
+      !cancelled() &&
+      needs.django-checks.result == 'skipped'
+    runs-on: ubuntu-latest
+    needs:
+      - django-checks
+    strategy:
+      matrix:
+        name:
+          - check_django
+          - validate_openapi
+          - check_migrations
+          - test_doc
+
+    steps:
+      - name: Pass
+        run: echo 'Django checks are skipped because API is unchanged.'
+
+  py-package-checks:
+    name: Run checks for Python packages/*
+    if: |
+      needs.get-changes.outputs.py_packages == 'true'
+    runs-on: ubuntu-latest
+    needs:
+      - get-changes
+      - lint
+    strategy:
+      fail-fast: false
+      matrix:
+        packages:
+          - packages/python/openverse-attribution
+        script:
+          - build
+          - test
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup CI env
+        uses: ./.github/actions/setup-env
+        with:
+          install_recipe: packages/python/openverse-attribution/install
+
+      - name: Run Python packages checks
+        run: pdm run -p ${{ matrix.packages }} ${{ matrix.script }}
+
+  # This job runs when `py-package-checks` doesn't and always passes, thus
+  # allowing PRs to meet the required checks criteria and be merged.
+  bypass-py-package-checks:
+    name: Run checks for Python packages/*
+    if: |
+      !cancelled() &&
+      needs.py-package-checks.result == 'skipped'
+    runs-on: ubuntu-latest
+    needs:
+      - py-package-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        name:
+          - build
+          - unit_test
+
+    steps:
+      - name: Pass
+        run: echo 'Checks for Python packages are skipped because they are unchanged.'
+
+  ############
+  # Frontend #
+  ############
+
+  nuxt-build:
+    name: Check Nuxt build
+    if: |
+      needs.get-changes.outputs.frontend == 'true' ||
+      needs.get-changes.outputs.ci_cd == 'true'
+    runs-on: ubuntu-latest
+    needs:
+      - get-changes
+      - lint
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup CI env
+        uses: ./.github/actions/setup-env
+        with:
+          setup_python: false
+          install_recipe: node-install
+          locales: "production"
+
+      - name: Run build
+        run: just frontend/run build
+        env:
+          DEPLOYMENT_ENV: production
+
+  nuxt-load-test:
+    name: Load test local frontend
+    runs-on: ubuntu-latest
+    needs:
+      - nuxt-build
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup CI env
+        uses: ./.github/actions/setup-env
+        with:
+          setup_python: false
+          install_recipe: node-install
+          locales: "test"
+
+      - name: Build and run Nuxt and Talkback
+        run: |
+          just frontend/run build
+          just frontend/run talkback &
+          env NUXT_PUBLIC_API_URL=http://127.0.0.1:49153/ just frontend/run start &
+
+      - name: Setup k6
+        uses: grafana/setup-k6-action@v1
+
+      - name: Wait for local Talkback to be available
+        # 10 seconds, talkback has a slow startup; this step will fail if Talkback never becomes available
+        run: npx wait-port -t 10000 :49153
+
+      - name: Wait for local Nuxt to be available
+        # 2 seconds, this step will fail if Nuxt never becomes available
+        run: npx wait-port -t 2000 http://127.0.0.1:8443/healthcheck
+
+      - name: Run k6 frontend all against local Nuxt
+        run: |
+          just k6 frontend all \
+            -e service_url=http://127.0.0.1:8443/ \
+            -e text_summary=/tmp/k6-summary.txt
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-output
+          path: /tmp/k6-summary.txt
+
+      - name: Check if comment needs to be posted
+        # Do not post comments on forks, or when merging a PR
+        id: set-post-comment
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" && \
+                "${{ github.event.pull_request.head.repo.owner.login }}" == "WordPress" && \
+                "${{ github.actor }}" != "dependabot[bot]" ]]; then
+            echo "post_comment=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "post_comment=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Make comment body
+        if: steps.set-post-comment.outputs.post_comment == 'true'
+        shell: python
+        run: |
+          from pathlib import Path
+          summary = Path("/tmp/k6-summary.txt").read_text()
+          Path("/tmp/k6-summary-comment.txt").write_text(f"""
+          ## Latest k6 run output[^update]
+
+          ```
+          {summary}
+          ```
+
+          [^update]: This comment will automatically update with new output each time k6 runs for this PR
+          """)
+
+      - uses: peter-evans/find-comment@v3
+        if: steps.set-post-comment.outputs.post_comment == 'true'
+        id: k6-summary-comment
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body-includes: Latest k6 run output
+
+      - name: Post comment summary
+        uses: peter-evans/create-or-update-comment@v4
+        if: steps.set-post-comment.outputs.post_comment == 'true'
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          edit-mode: replace
+          body-path: /tmp/k6-summary-comment.txt
+          comment-id: ${{ steps.k6-summary-comment.outputs.comment-id }}
+
+  nuxt-checks:
+    name: Run Nuxt checks
+    if: |
+      needs.get-changes.outputs.frontend == 'true' ||
+      needs.get-changes.outputs.ci_cd == 'true'
+    runs-on: ubuntu-latest
+    needs:
+      - get-changes
+      - lint
+    strategy:
+      fail-fast: false
+      matrix:
+        name:
+          - unit_test
+          - test_media_props
+          - frontend_init
+        include:
+          - name: unit_test
+            recipe: frontend/run test:unit
+          - name: test_media_props
+            recipe: frontend/generate-docs
+          - name: frontend_init
+            recipe: frontend/init
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup CI env
+        uses: ./.github/actions/setup-env
+        with:
+          setup_python: false
+          install_recipe: node-install
+
+      - name: Run check recipe
+        run: just ${{ matrix.recipe }}
+
+  # This job runs when `nuxt-checks` doesn't and always passes, thus allowing
+  # PRs to meet the required checks criteria and be merged.
+  bypass-nuxt-checks:
+    name: Run Nuxt checks
+    if: |
+      !cancelled() &&
+      needs.nuxt-checks.result == 'skipped'
+    runs-on: ubuntu-latest
+    needs:
+      - nuxt-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        name:
+          - unit_test
+
+    steps:
+      - name: Pass
+        run: echo 'Playwright tests are skipped because frontend is unchanged.'
+
+  js-package-checks:
+    name: Run checks for JS packages/*
+    if: |
+      needs.get-changes.outputs.js_packages == 'true'
+    runs-on: ubuntu-latest
+    needs:
+      - get-changes
+      - lint
+    strategy:
+      fail-fast: false
+      matrix:
+        name:
+          - build
+          - unit_test
+        include:
+          - name: build
+            script: "build"
+          - name: unit_test
+            script: "test:unit"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup CI env
+        uses: ./.github/actions/setup-env
+        with:
+          setup_python: false
+          install_recipe: node-install
+
+      - name: Run JS packages checks
+        run: pnpm --filter ./packages/js/* run --aggregate-output ${{ matrix.script }}
+
+  # This job runs when `js-package-checks` doesn't and always passes, thus
+  # allowing PRs to meet the required checks criteria and be merged.
+  bypass-js-package-checks:
+    name: Run checks for JS packages/*
+    if: |
+      !cancelled() &&
+      needs.js-package-checks.result == 'skipped'
+    runs-on: ubuntu-latest
+    needs:
+      - js-package-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        name:
+          - build
+          - unit_test
+
+    steps:
+      - name: Pass
+        run: echo 'Checks for JS packages are skipped because they are unchanged.'
+
+  playwright:
+    name: Run Playwright tests
+    if: |
+      needs.get-changes.outputs.frontend == 'true' ||
+      needs.get-changes.outputs.ci_cd == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs:
+      - get-changes
+      - lint
+    strategy:
+      fail-fast: false
+      matrix:
+        name:
+          - playwright_vr
+          - playwright_e2e
+          - storybook
+        include:
+          - name: playwright_vr
+            script: "test:playwright visual-regression -u"
+          - name: playwright_e2e
+            script: "test:playwright e2e"
+          - name: storybook
+            script: "test:storybook -u"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup CI env
+        uses: ./.github/actions/setup-env
+        with:
+          setup_python: false
+          install_recipe: node-install
+          locales: "test"
+
+      - name: Copy pnpm-lock.yaml
+        run: cp pnpm-lock.yaml frontend/
+
+      - name: Run Playwright tests
+        run: just frontend/run ${{ matrix.script }} --workers=2
+
+      - name: Check for changes after running tests with -u
+        id: check_snapshots_changed
+        if: failure() || success()
+        run: |
+          diff_names="$(git diff --binary --name-only)"
+          if [ -n "$diff_names" ]; then
+            git add . && git diff --staged --binary > /tmp/snapshot_diff.patch
+            echo "snapshots_changed=true" | tee "$GITHUB_OUTPUT"
+            printf "The following snapshots were updated:\n"
+            while IFS= read -r filename; do
+              printf "\t- %s\n" "$filename"
+            done <<< "$diff_names"
+            exit 1
+          else
+            echo "snapshots_changed=false" | tee "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        id: test-results
+        with:
+          name: ${{ matrix.name }}_test_results
+          path: frontend/test-results
+
+      # This step only runs if there was a failure and snapshots indeed changed.
+      - uses: actions/upload-artifact@v4
+        if: failure() && steps.check_snapshots_changed.outputs.snapshots_changed == 'true'
+        id: snapshot-patch
+        with:
+          name: ${{ matrix.name }}_snapshot_diff
+          path: /tmp/snapshot_diff.patch
+
+  # This job runs when `playwright` doesn't and always passes, thus allowing
+  # PRs to meet the required checks criteria and be merged.
+  bypass-playwright:
+    name: Run Playwright tests
+    if: |
+      !cancelled() &&
+      needs.playwright.result == 'skipped'
+    runs-on: ubuntu-latest
+    needs:
+      - playwright
+    strategy:
+      matrix:
+        name:
+          - playwright_vr
+          - playwright_e2e
+          - storybook
+
+    steps:
+      - name: Pass
+        run: echo 'Playwright tests are skipped because frontend is unchanged.'
+
+  playwright-test-failure-comment:
+    name: Post Playwright test debugging instructions
+    if: |
+      !cancelled() &&
+      github.event_name == 'pull_request' &&
+      needs.playwright.result != ''
+    runs-on: ubuntu-latest
+    needs:
+      - playwright
+
+    steps:
+      - uses: peter-evans/find-comment@v3
+        id: test-results-comment
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body-includes: Playwright failure test results
+
+      - name: Delete existing results comment
+        uses: actions/github-script@v7
+        if: steps.test-results-comment.outputs.comment-id != 0
+        with:
+          script: |
+            await github.rest.issues.deleteComment({
+              repo: context.repo.repo,
+              owner: context.repo.owner,
+              comment_id: ${{ steps.test-results-comment.outputs.comment-id }}
+            })
+            console.log('Deleted comment with ID ${{ steps.test-results-comment.outputs.comment-id }}')
+
+      - name: Build help body
+        if: needs.playwright.result == 'failure'
+        id: help-body
+        run: |
+          EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64) # Security hardening: https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#understanding-the-risk-of-script-injections
+          MESSAGE=$(cat <<HEREDOC
+          help_body<<$EOF
+          **Playwright failure test results**: <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}>
+
+          It looks like some of the Playwright tests failed. If you made changes to the frontend UI without updating snapshots, this might be the cause. You can download zipped patches containing the updated snapshots alongside a general trace of the tests under the "Artifacts" section in the above page. They're named in the form \`*_snapshot_diff\` and \`*_test_results\` respectively.
+
+          You can read more [on how to use these artifacts in the docs](https://docs.openverse.org/frontend/reference/testing_guidelines.html#debugging).
+
+          If the test is flaky, follow the [flaky test triage procedure](https://docs.openverse.org/general/test.html#flaky-tests).
+          $EOF
+          HEREDOC
+          )
+          echo "$MESSAGE" | tee "$GITHUB_OUTPUT"
+
+      - uses: peter-evans/create-or-update-comment@v4
+        id: create-comment
+        # Do not leave a comment on forks
+        if: |
+          needs.playwright.result == 'failure' &&
+          (
+            github.event_name == 'pull_request' &&
+            github.event.pull_request.head.repo.owner.login == 'WordPress' &&
+            github.actor != 'dependabot[bot]'
+          )
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: ${{ steps.help-body.outputs.help_body }}
+
+  lighthouse-ci:
+    name: Collect Lighthouse CI results
+    runs-on: ubuntu-latest
+    needs:
+      - nuxt-build
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup CI env
+        uses: ./.github/actions/setup-env
+        with:
+          setup_python: false
+          install_recipe: node-install
+
+      - name: Run build
+        run: just frontend/run build
+        env:
+          DEPLOYMENT_ENV: production
+          NODE_ENV: production
+
+      - name: Run Lighthouse CI
+        id: lhci-autorun
+        # Lighthouse CI runs the webserver for us, as configured in lighthouserc
+        env:
+          NODE_ENV: production
+        run: |
+          pnpm --package=@lhci/cli dlx lhci autorun --config .github/.lighthouserc.yml
+
+      - name: Display Report
+        if: always()
+        uses: jackywithawhitedog/lighthouse-viewer-action@v2
+        with:
+          resultsPath: .lighthouseci
+          lighthouseOutcome: ${{ steps.lhci-autorun.outcome }}
+
+  #################
+  # Documentation #
+  #################
+
+  build-docs:
+    name: Build full-stack docs
+    if: |
+      needs.get-changes.outputs.documentation == 'true' ||
+      needs.get-changes.outputs.ci_cd == 'true'
+    runs-on: ubuntu-latest
+    needs:
+      - get-changes
+      - lint
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup CI env
+        uses: ./.github/actions/setup-env
+
+      - name: Compile documentation
+        uses: ./.github/actions/build-docs
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+        # Docs will be located at `/tmp/docs`.
+
+      - name: Upload documentation
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation
+          path: /tmp/docs/
+
+  emit-docs:
+    name: Emit full-stack docs
+    # https://github.com/actions/runner/issues/491#issuecomment-850884422
+    if: |
+      !failure() && !cancelled() &&
+      (
+        (
+          github.event_name == 'push' &&
+          github.repository == 'WordPress/openverse'
+        ) ||
+        (
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.owner.login == 'WordPress' &&
+          github.actor != 'dependabot[bot]'
+        )
+      ) &&
+      needs.get-changes.outputs.documentation == 'true' &&
+      (needs.test-ing.result == 'success' || needs.test-ing.result == 'skipped') &&
+      (needs.test-api.result == 'success' || needs.test-api.result == 'skipped') &&
+      (needs.test-cat.result == 'success' || needs.test-cat.result == 'skipped') &&
+      (needs.playwright.result == 'success' || needs.playwright.result == 'skipped') &&
+      needs.build-docs.result == 'success'
+    runs-on: ubuntu-latest
+    needs:
+      - get-changes
+      - test-cat
+      - test-ing
+      - test-api
+      - playwright
+      - build-docs
+
+    steps:
+      - name: Download documentation
+        uses: actions/download-artifact@v4
+        with:
+          name: documentation
+          path: /tmp/docs
+
+      - name: Recreate working directory # to avoid superfluous files from getting tracked automatically
+        run: |
+          cd ..
+          sudo rm -rf openverse
+          mkdir openverse
+
+      - name: Checkout repository at `gh-pages` branch
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: gh-pages
+
+      - name: Checkout automations from repository
+        uses: actions/checkout@v4
+        with:
+          path: automation-checkout
+
+      - name: Copy existing previews
+        if: github.event_name == 'push'
+        run: |
+          mv /tmp/docs /tmp/gh-pages
+          mv gh-pages/_preview /tmp/gh-pages/_preview
+
+      - name: Replace preview of current PR
+        if: github.event_name == 'pull_request'
+        run: |
+          cp -r gh-pages /tmp/gh-pages
+          sudo rm -rf /tmp/gh-pages/_preview/${{ github.event.pull_request.number }}
+          mv /tmp/docs /tmp/gh-pages/_preview/${{ github.event.pull_request.number }}
+
+      - name: Determine which files have changed
+        if: github.event_name == 'pull_request'
+        id: preview_diff
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PYTHONPATH: ${{ github.workspace }}/automation-checkout/automations/python
+        working-directory: ${{ github.workspace }}/automation-checkout/automations/python/workflows
+        run: python get_folder_differences.py
+
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: /tmp/gh-pages
+          force_orphan: true
+          cname: docs.openverse.org
+
+      - uses: peter-evans/find-comment@v3
+        if: github.event_name == 'pull_request'
+        id: final-preview-comment
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body-includes: Full-stack documentation
+
+      - uses: peter-evans/create-or-update-comment@v4
+        if: github.event_name == 'pull_request'
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-id: ${{ steps.final-preview-comment.outputs.comment-id }}
+          edit-mode: replace
+          body: ${{ steps.preview_diff.outputs.body }}
+
+      - name: Checkout repository # again, to enable cleaning
+        uses: actions/checkout@v4
+        if: success() || failure()
+
+  #################
+  # Docker images #
+  #################
+
+  publish-images:
+    name: Publish Docker images
+    runs-on: ubuntu-latest
+    # prevent running on fork PRs
+    if: |
+      !failure() && !cancelled() &&
+      (
+        (github.event_name == 'push' && github.repository == 'WordPress/openverse') ||
+        (github.event_name == 'workflow_dispatch' && inputs.perform_deploy)
+      ) &&
+      needs.determine-images.outputs.do_publish == 'true' &&
+      (needs.test-ing.result == 'success' || needs.test-ing.result == 'skipped') &&
+      (needs.test-api.result == 'success' || needs.test-api.result == 'skipped') &&
+      (needs.test-cat.result == 'success' || needs.test-cat.result == 'skipped') &&
+      (needs.playwright.result == 'success' || needs.playwright.result == 'skipped')
+    needs:
+      - determine-images
+      - get-image-tag
+      - build-images
+      - test-ing # test for ingestion server
+      - test-api # test for API
+      - test-cat # test for catalog
+      - playwright # test for frontend
+    permissions:
+      packages: write
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.determine-images.outputs.publish_matrix) }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Docker Registry
+        uses: docker/login-action@v3
+        with:
+          registry: https://ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Load Docker image `${{ matrix.image }}`
+        uses: ./.github/actions/load-img
+        with:
+          run_id: ${{ github.run_id }}
+          setup_images: ${{ matrix.image }}
+
+      - name: Load and tag image `${{ matrix.image }}` (latest & sha)
+        run: |
+          docker tag openverse-${{ matrix.image }} \
+            ghcr.io/wordpress/openverse-${{ matrix.image }}:latest
+          docker tag openverse-${{ matrix.image }} \
+            ghcr.io/wordpress/openverse-${{ matrix.image }}:${{ needs.get-image-tag.outputs.image_tag }}
+          docker push --all-tags ghcr.io/wordpress/openverse-${{ matrix.image }}
+
+  ##############
+  # Deployment #
+  ##############
+
+  # See https://github.com/WordPress/openverse/issues/1033 for why
+  # we don't use the standard reusable workflow approach for these.
+
+  deploy-frontend:
+    name: Deploy staging frontend
+    runs-on: ubuntu-latest
+    if: |
+      !failure() && !cancelled() &&
+      (
+        (github.event_name == 'push' && github.repository == 'WordPress/openverse') ||
+        (github.event_name == 'workflow_dispatch' && inputs.perform_deploy)
+      ) &&
+      needs.get-changes.outputs.frontend == 'true' &&
+      needs.playwright.result == 'success' &&
+      needs.publish-images.result == 'success'
+    needs:
+      - get-changes
+      - playwright
+      - get-image-tag
+      - publish-images
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get commit message
+        id: commit
+        env:
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          PYTHONPATH: ${{ github.workspace }}/automations/python
+        working-directory: automations/python/workflows
+        run: python get_commit_message.py
+
+      - name: Deploy staging frontend
+        uses: felixp8/dispatch-and-wait@v0.1.0
+        with:
+          owner: WordPress
+          repo: openverse-infrastructure
+          token: ${{ secrets.ACCESS_TOKEN }}
+          event_type: deploy_staging_nuxt
+          client_payload: |
+            {
+              "actor": "${{ github.actor }}",
+              "tag": "${{ needs.get-image-tag.outputs.image_tag }}",
+              "run_name": "${{ steps.commit.outputs.commit_message }}"
+            }
+          wait_time: 60 # check every minute
+          max_time: 1800 # allow up to 30 minutes for a deployment
+
+      - name: Trigger staging Playwright smoketests
+        uses: convictional/trigger-workflow-and-wait@v1.6.5
+        with:
+          owner: WordPress
+          repo: openverse
+          github_token: ${{ secrets.ACCESS_TOKEN }}
+          workflow_file_name: playwright_deployment_smoketest.yml
+          wait_interval: 60
+          # TODO: Set to true once we see that this test is stable, and we can fail the deployment if it fails.
+          # @see https://github.com/WordPress/openverse/pull/4991
+          propagate_failure: false
+          client_payload: |
+            {
+              "service_url": "https://staging.openverse.org/"
+            }
+
+      - name: Trigger staging k6 load test
+        uses: convictional/trigger-workflow-and-wait@v1.6.5
+        with:
+          owner: WordPress
+          repo: openverse
+          github_token: ${{ secrets.ACCESS_TOKEN }}
+          workflow_file_name: k6.yml
+          wait_interval: 60
+          # TODO: Set to true once we see that this test is stable, and we can fail the deployment if it fails.
+          # @see https://github.com/WordPress/openverse/pull/4991
+          propagate_failure: false
+          client_payload: |
+            {
+              "namespace": "frontend",
+              "scenario": "all",
+              "service_url": "https://staging.openverse.org/",
+              "report": true
+            }
+
+  deploy-api:
+    name: Deploy staging API
+    runs-on: ubuntu-latest
+    if: |
+      !failure() && !cancelled() &&
+      (
+        (github.event_name == 'push' && github.repository == 'WordPress/openverse') ||
+        (github.event_name == 'workflow_dispatch' && inputs.perform_deploy)
+      ) &&
+      needs.get-changes.outputs.api == 'true' &&
+      needs.publish-images.result == 'success'
+    needs:
+      - get-changes
+      - get-image-tag
+      - publish-images
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get commit message
+        id: commit
+        env:
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          PYTHONPATH: ${{ github.workspace }}/automations/python
+        working-directory: automations/python/workflows
+        run: python get_commit_message.py
+
+      - name: Deploy staging API
+        uses: felixp8/dispatch-and-wait@v0.1.0
+        with:
+          owner: WordPress
+          repo: openverse-infrastructure
+          token: ${{ secrets.ACCESS_TOKEN }}
+          event_type: deploy_staging_api
+          client_payload: |
+            {
+              "actor": "${{ github.actor }}",
+              "tag": "${{ needs.get-image-tag.outputs.image_tag }}",
+              "run_name": "${{ steps.commit.outputs.commit_message }}"
+            }
+          wait_time: 60 # check every minute
+          max_time: 1800 # allow up to 30 minutes for a deployment
+
+  ################
+  # Notification #
+  ################
+
+  send-report:
+    name: Send Slack report
+    runs-on: ubuntu-latest
+    if: |
+      !cancelled() &&
+      (
+        (github.event_name == 'push' && github.repository == 'WordPress/openverse') ||
+        (github.event_name == 'workflow_dispatch' && inputs.perform_deploy)
+      ) &&
+      (
+        ((github.event_name == 'push' && needs.get-changes.outputs.documentation == 'true') && needs.emit-docs.result != 'success') ||
+        (needs.determine-images.outputs.do_publish == 'true' && needs.publish-images.result != 'success') ||
+        (needs.get-changes.outputs.frontend == 'true' && needs.deploy-frontend.result != 'success') ||
+        (needs.get-changes.outputs.api == 'true' && needs.deploy-api.result != 'success')
+      )
+    needs: # the end products of the CI + CD workflow
+      - get-changes
+      - determine-images
+      - emit-docs
+      - publish-images
+      - deploy-frontend
+      - deploy-api
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get commit message
+        id: commit
+        env:
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          PYTHONPATH: ${{ github.workspace }}/automations/python
+        working-directory: automations/python/workflows
+        run: python get_commit_message.py
+
+      - name: Generate report
+        id: report
+        env:
+          COMMIT_MESSAGE: ${{ steps.commit.outputs.commit_message }}
+          DEPLOY_API_RESULT: ${{ needs.deploy-api.result }}
+          DEPLOY_FRONTEND_RESULT: ${{ needs.deploy-frontend.result }}
+          EMIT_DOCS_RESULT: ${{ needs.emit-docs.result }}
+          GH_SLACK_USERNAME_MAP: ${{ secrets.GH_SLACK_USERNAME_MAP }}
+          GITHUB_ACTOR: ${{ github.event.head_commit.author.username }}
+          PUBLISH_IMAGES_RESULT: ${{ needs.publish-images.result }}
+          PYTHONPATH: ${{ github.workspace }}/automations/python
+          REPOSITORY: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          SERVER_URL: ${{ github.server_url }}
+        working-directory: automations/python/workflows
+        run: python generate_report.py
+
+      - name: Send report
+        uses: slackapi/slack-github-action@v2
+        with:
+          webhook: ${{ secrets.SLACK_OV_ALERTS_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: ${{ steps.report.outputs.payload }}
